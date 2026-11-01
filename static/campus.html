@@ -1,0 +1,2760 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IIT Bhubaneswar · 3D Campus Architecture & Network Simulation</title>
+  <script src="/campus-three.min.js"></script>
+  <script src="/campus-orbit-controls.js"></script>
+  <style>
+    :root {
+      --bg: #070b12;
+      --panel-bg: rgba(13, 20, 32, 0.88);
+      --panel-border: rgba(45, 65, 95, 0.55);
+      --accent-cyan: #4df0d2;
+      --accent-blue: #38bdf8;
+      --accent-green: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-red: #f87171;
+      --accent-purple: #c084fc;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #viewport {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      cursor: grab;
+    }
+
+    #viewport:active {
+      cursor: grabbing;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(7, 11, 18, 0.95) 0%, rgba(7, 11, 18, 0.7) 70%, transparent 100%);
+      z-index: 10;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+    }
+
+    header * {
+      pointer-events: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #1e3a8a, #065f46);
+      border: 1px solid rgba(77, 240, 210, 0.4);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      color: var(--accent-cyan);
+      box-shadow: 0 0 15px rgba(77, 240, 210, 0.25);
+    }
+
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-title h1 span {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      background: rgba(77, 240, 210, 0.12);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(77, 240, 210, 0.3);
+    }
+
+    .brand-title p {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .header-center {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      gap: 8px;
+      width: 260px;
+      transition: all 0.2s;
+    }
+
+    .search-box:focus-within {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(77, 240, 210, 0.2);
+      width: 300px;
+    }
+
+    .search-box input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 12px;
+      width: 100%;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Common Buttons & UI Elements */
+    button {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    button:hover {
+      background: rgba(51, 65, 85, 0.8);
+      border-color: var(--accent-cyan);
+      color: #fff;
+    }
+
+    button.active {
+      background: rgba(77, 240, 210, 0.15);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(77, 240, 210, 0.2);
+    }
+
+    button.primary-btn {
+      background: linear-gradient(135deg, #0d9488, #0284c7);
+      border-color: transparent;
+      color: white;
+      font-weight: 600;
+    }
+
+    button.primary-btn:hover {
+      filter: brightness(1.15);
+      box-shadow: 0 0 15px rgba(13, 148, 136, 0.4);
+    }
+
+    /* Left Sidebar: Controls & Scenarios */
+    .sidebar-left {
+      position: absolute;
+      top: 70px;
+      left: 20px;
+      width: 320px;
+      max-height: calc(100vh - 90px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .sidebar-left>* {
+      pointer-events: auto;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .panel-header h2 {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.8px;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .panel-body {
+      padding: 12px 14px;
+      overflow-y: auto;
+      max-height: 280px;
+    }
+
+    .control-group {
+      margin-bottom: 12px;
+    }
+
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-label {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+      letter-spacing: 0.5px;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .button-grid.tri {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .scenario-select {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .scenario-select:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .scenario-desc {
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 6px;
+      background: rgba(2, 6, 23, 0.6);
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      border-left: 3px solid var(--accent-cyan);
+    }
+
+    /* Right Sidebar: Building / Node Detail Inspector */
+    .sidebar-right {
+      position: absolute;
+      top: 70px;
+      right: 20px;
+      width: 360px;
+      max-height: calc(100vh - 90px);
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar-right>* {
+      pointer-events: auto;
+    }
+
+    .inspector-header-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .inspector-header-status.warning {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--accent-amber);
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .inspector-header-status.critical {
+      background: rgba(248, 113, 113, 0.15);
+      color: var(--accent-red);
+      border-color: rgba(248, 113, 113, 0.3);
+    }
+
+    .node-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+
+    .node-subtitle {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      margin-bottom: 12px;
+    }
+
+    .stat-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .stat-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(45, 65, 95, 0.4);
+      padding: 8px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .stat-card-label {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .stat-card-value {
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: #fff;
+    }
+
+    .stat-card-unit {
+      font-size: 9px;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    .node-details-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      margin-bottom: 12px;
+    }
+
+    .node-details-table td {
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .node-details-table td:first-child {
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      width: 40%;
+    }
+
+    .node-details-table td:last-child {
+      color: #f1f5f9;
+      font-family: var(--font-mono);
+      text-align: right;
+    }
+
+    .sparkline-container {
+      margin-top: 8px;
+      margin-bottom: 12px;
+    }
+
+    .sparkline-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    canvas.sparkline-canvas {
+      width: 100%;
+      height: 44px;
+      background: rgba(2, 6, 23, 0.5);
+      border: 1px solid var(--panel-border);
+      border-radius: 4px;
+      display: block;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .action-row button {
+      flex: 1;
+      padding: 7px;
+      font-size: 11px;
+      justify-content: center;
+    }
+
+    /* Bottom HUD: Live Telemetry Bar & Campus Status */
+    .bottom-hud {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 30px;
+      padding: 8px 24px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      z-index: 10;
+      pointer-events: auto;
+    }
+
+    .hud-metric {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hud-metric-label {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .hud-metric-val {
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+    }
+
+    .hud-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--panel-border);
+    }
+
+    .hud-alert-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    .pulse-dot.warning {
+      background: var(--accent-amber);
+      box-shadow: 0 0 10px var(--accent-amber);
+    }
+
+    .pulse-dot.critical {
+      background: var(--accent-red);
+      box-shadow: 0 0 10px var(--accent-red);
+    }
+
+    /* Floating View / Camera Toolstrip */
+    .view-toolbar {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    .view-toolbar button {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Modal Dialog */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .modal-header h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+
+    .modal-body pre {
+      background: rgba(2, 6, 23, 0.8);
+      border: 1px solid var(--panel-border);
+      padding: 14px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      overflow-x: auto;
+      margin: 10px 0;
+      color: var(--accent-cyan);
+    }
+
+    /* Tooltip */
+    #hover-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent-cyan);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      z-index: 50;
+      display: none;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      transform: translate(-50%, -120%);
+      white-space: nowrap;
+    }
+
+    #hover-tooltip .sub {
+      color: var(--text-muted);
+      font-size: 9px;
+      display: block;
+    }
+
+    /* Virtual Joystick / Walk Mode Controls Overlay */
+    .walk-controls-overlay {
+      position: absolute;
+      bottom: 80px;
+      left: 20px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      display: none;
+      z-index: 10;
+      backdrop-filter: blur(10px);
+    }
+
+    .walk-controls-overlay.visible {
+      display: block;
+    }
+
+    .key-hint {
+      display: inline-block;
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.4;
+        transform: scale(1.2);
+      }
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent-cyan);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      z-index: 90;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(5px);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .sidebar-right {
+        width: 300px;
+      }
+
+      .sidebar-left {
+        width: 280px;
+      }
+
+      .search-box {
+        width: 180px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        height: 50px;
+        padding: 0 10px;
+      }
+
+      .brand-title p {
+        display: none;
+      }
+
+      .search-box {
+        display: none;
+      }
+
+      .sidebar-left {
+        top: 60px;
+        left: 10px;
+        width: calc(100vw - 20px);
+        max-height: 220px;
+      }
+
+      .sidebar-right {
+        top: auto;
+        bottom: 80px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-height: 240px;
+      }
+
+      .bottom-hud {
+        display: none;
+      }
+    }
+
+    .model-note {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 21;
+      background: #0a1722eF;
+      color: #c1d3d8;
+      text-align: center;
+      padding: 5px 9px;
+      font: 9px/1.5 system-ui
+    }
+
+    .model-note a {
+      color: #8ce7c2
+    }
+
+    .nc-controls {
+      position: fixed;
+      top: 65px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 22;
+      display: flex;
+      gap: 6px
+    }
+
+    .nc-controls a {
+      color: #acdacb;
+      padding: 7px 10px;
+      background: #102635;
+      border: 1px solid #345364;
+      border-radius: 6px;
+      text-decoration: none;
+      font: 11px system-ui
+    }
+
+    .nc-controls button {
+      font-size: 10px
+    }
+
+    .sidebar-left,
+    .sidebar-right {
+      top: 110px;
+      max-height: calc(100vh - 165px);
+      overflow: auto
+    }
+
+    .bottom-hud,
+    .view-toolbar {
+      bottom: 35px
+    }
+
+    .campus-clean .sidebar-left,
+    .campus-clean .sidebar-right,
+    .campus-clean .bottom-hud {
+      display: none
+    }
+
+    #nc-panel[hidden] {
+      display: none
+    }
+
+    #nc-panel {
+      position: fixed;
+      z-index: 40;
+      top: 115px;
+      right: 25px;
+      width: min(470px, calc(100vw - 30px));
+      max-height: calc(100vh - 150px);
+      overflow: auto;
+      background: #0c1c2bf5;
+      color: #d2e5ed;
+      padding: 22px;
+      border: 1px solid #477069;
+      border-radius: 12px;
+      box-shadow: 0 20px 100px #0008;
+      user-select: text
+    }
+
+    #nc-panel h2 {
+      font: 600 18px system-ui;
+      margin-bottom: 14px
+    }
+
+    #nc-panel p {
+      font: 12px/1.7 system-ui;
+      margin: 10px 0;
+      color: #a3c1cb
+    }
+
+    #nc-panel select {
+      display: block;
+      width: 100%;
+      padding: 9px;
+      background: #172d3b;
+      color: #def9ed;
+      border: 1px solid #416556;
+      border-radius: 6px
+    }
+
+    #nc-output pre {
+      font: 10px/1.6 monospace;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      margin-top: 14px
+    }
+
+    button:focus-visible,
+    a:focus-visible {
+      outline: 2px solid #a5ebca;
+      outline-offset: 3px
+    }
+
+    @media(max-width:900px) {
+      .header-actions button {
+        font-size: 0;
+        width: 30px;
+        height: 30px
+      }
+
+      .header-actions button:before {
+        content: '◈';
+        font-size: 12px
+      }
+
+      .header-center {
+        display: none
+      }
+
+      .nc-controls {
+        top: 70px;
+        width: max-content
+      }
+
+      .sidebar-left {
+        top: 112px;
+        max-height: 200px
+      }
+
+      .sidebar-right {
+        top: auto;
+        bottom: 45px;
+        max-height: 190px
+      }
+
+      .model-note {
+        font-size: 7px
+      }
+
+      .brand-title p {
+        font-size: 8px
+      }
+    }
+
+    .nc-controls .open-netcoop {
+      background: linear-gradient(135deg, #93f4bd, #46cda5);
+      border: 1px solid #b7ffdb;
+      color: #072b20;
+      font: 700 13px system-ui;
+      padding: 12px 22px;
+      box-shadow: 0 4px 28px #4cdbac35;
+      white-space: nowrap
+    }
+
+    .nc-controls {
+      align-items: center
+    }
+
+    .nc-controls button {
+      min-height: 39px
+    }
+
+    .open-netcoop:hover {
+      filter: brightness(1.1)
+    }
+
+    @media(max-width:650px) {
+      .nc-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 95%;
+        top: 65px
+      }
+
+      .nc-controls .open-netcoop {
+        font-size: 12px;
+        padding: 10px 18px
+      }
+
+      .nc-controls button {
+        font-size: 9px;
+        min-height: 32px
+      }
+
+      .sidebar-left {
+        top: 150px
+      }
+    }
+  </style>
+  <script src="/campus-buildings.js"></script>
+</head>
+
+<body class="campus-clean">
+  <div class="model-note">PHOTO-INFORMED ARCHITECTURE · Schematic positions and dimensions · Simulated network hardware
+    / traffic · <a href="/campus-sources.json" target="_blank" rel="noopener">Sources & accuracy</a></div>
+  <div class="nc-controls"><a class="open-netcoop" href="/netcoop.html">Open NetCoop AI →</a><button
+      id="nc-layout-toggle">Show campus controls</button><button id="nc-panel-toggle">Diagnose with agents</button>
+  </div>
+  <section id="nc-panel" hidden><button id="nc-panel-close" style="float:right"
+      aria-label="Close diagnostic panel">×</button>
+    <h2>NetCoop agent investigation</h2>
+    <p>This sends the current <strong>simulated</strong> campus snapshot to your existing MCP diagnostic backend.
+      Unavailable metrics remain unknown.</p><label for="nc-mode">Reasoning mode</label><select id="nc-mode">
+      <option value="demo">Offline agents + MCP</option>
+      <option value="gemini">Google Gemini + MCP (server key required)</option>
+    </select>
+    <p>Gemini mode sends this simulation to Google. Your key remains on the server.</p>
+    <div style="display:flex;gap:8px;margin:12px 0"><button id="nc-diagnose">Run diagnosis</button><button
+        id="nc-export">Export compatible telemetry</button></div>
+    <div id="nc-output" role="status"></div>
+  </section>
+  <!-- 3D Canvas Viewport -->
+  <canvas id="viewport"></canvas>
+  <div id="hover-tooltip">
+    <span id="tooltip-title">Building</span>
+    <span id="tooltip-sub" class="sub">Network Node</span>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">BBS</div>
+      <div class="brand-title">
+        <h1>IIT Bhubaneswar <span>CAMPUS MODEL</span></h1>
+        <p>20.1507° N, 85.6655° E · Argul Permanent Campus</p>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="search-box">
+        <span style="color:var(--text-muted);font-size:13px;">🔍</span>
+        <input type="text" id="campus-search" placeholder="Search building, switch, AP..."
+          aria-label="Search campus buildings and network nodes">
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="btn-audio" title="Toggle audio feedback">🔊 <span id="audio-state">Audio OFF</span></button>
+      <button id="btn-export-json" title="Export complete topology model">⬇ Topology JSON</button>
+      <button id="btn-info-modal" title="View network architecture">ℹ Architecture</button>
+      <button id="btn-reset-cam" title="Reset view">⤢ Reset</button>
+    </div>
+  </header>
+
+  <!-- Left Sidebar: Controls & Scenarios -->
+  <aside class="sidebar-left">
+    <!-- Scenarios Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>⚡ Campus Scenarios</h2>
+        <span id="scenario-status" class="inspector-header-status">NORMAL</span>
+      </div>
+      <div class="panel-body">
+        <div class="control-group">
+          <label class="control-label" for="scenario-dropdown">INCIDENT SIMULATION</label>
+          <select id="scenario-dropdown" class="scenario-select" aria-label="Select campus network incident scenario">
+            <option value="baseline">1. Optimal Campus Baseline (10G Multi-Ring)</option>
+            <option value="hostel_congestion">2. Evening Hostel Congestion (MHR & BHR)</option>
+            <option value="lhc_overload">3. LHC-1 Hackathon Wi-Fi Overload (High Density)</option>
+            <option value="ses_fiber_cut">4. SES Feeder Fiber Bend & Ring Failover</option>
+            <option value="citsc_gateway_fail">5. CITSC Primary NKN Link Flap (BGP Failover)</option>
+            <option value="rogue_arp">6. Lab Rogue Device ARP Storm & CPU Spike</option>
+          </select>
+          <div id="scenario-explanation" class="scenario-desc">
+            All 10 Gbps single-mode optical fiber conduits healthy. Low end-to-end latency (&lt;2ms), zero packet drops,
+            balanced load across academic schools and residential halls.
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">VISUALIZATION LAYER</label>
+          <div class="button-grid">
+            <button id="mode-twin" class="active" data-mode="twin">🏛 Campus Model</button>
+            <button id="mode-cyber" data-mode="cyber">🕸 Cyber Grid</button>
+            <button id="mode-heatmap" data-mode="heatmap">📶 Wi-Fi Heatmap</button>
+            <button id="mode-logical" data-mode="logical">📐 3D Logical Tree</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">TOPOLOGY OVERLAYS</label>
+          <div class="button-grid tri">
+            <button id="toggle-fibers" class="active">Fiber Cables</button>
+            <button id="toggle-packets" class="active">Simulated Packets</button>
+            <button id="toggle-wifi" class="active">Wi-Fi Radios</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Navigation Presets -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>🎯 Camera Presets</h2>
+      </div>
+      <div class="panel-body">
+        <div class="button-grid">
+          <button id="cam-overview">🌐 Bird's Eye</button>
+          <button id="cam-admin">🏛 Admin & NOC</button>
+          <button id="cam-academic">🔬 Academic Arc</button>
+          <button id="cam-hostels">🏢 Student Hostels</button>
+          <button id="cam-lhc">🎓 Lecture Halls</button>
+          <button id="cam-drone">🛸 Drone Orbit</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Sidebar: Building / Node Inspector -->
+  <aside class="sidebar-right">
+    <div class="panel" id="inspector-panel">
+      <div class="panel-header">
+        <h2>🔍 Node Telemetry Inspector</h2>
+        <span id="node-badge" class="inspector-header-status">10G OPTICAL</span>
+      </div>
+      <div class="panel-body">
+        <div class="node-title" id="node-name">CITSC Data Center & Core NOC</div>
+        <div class="node-subtitle" id="node-role">Tier 1 · Central Distribution & HPC Hub</div>
+
+        <div class="stat-cards">
+          <div class="stat-card">
+            <span class="stat-card-label">RTT PING</span>
+            <span class="stat-card-value" id="node-ping">1.2<span class="stat-card-unit">ms</span></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-label">THROUGHPUT</span>
+            <span class="stat-card-value" id="node-throughput">6.4<span class="stat-card-unit">Gbps</span></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-label">CLIENTS</span>
+            <span class="stat-card-value" id="node-clients">1,420</span>
+          </div>
+        </div>
+
+        <table class="node-details-table">
+          <tbody>
+            <tr>
+              <td>Location</td>
+              <td id="node-coords">20.1507° N, 85.6655° E</td>
+            </tr>
+            <tr>
+              <td>IP Subnet</td>
+              <td id="node-subnet">10.20.1.0/24 (VLAN 1)</td>
+            </tr>
+            <tr>
+              <td>Switch Hardware</td>
+              <td id="node-hardware">Cisco Nexus 9504 Dual HA</td>
+            </tr>
+            <tr>
+              <td>Uplink Link</td>
+              <td id="node-uplink">2x 10G NKN Dark Fiber</td>
+            </tr>
+            <tr>
+              <td>Active APs</td>
+              <td id="node-aps">32x Wi-Fi 6 (802.11ax)</td>
+            </tr>
+            <tr>
+              <td>Switch CPU / RAM</td>
+              <td id="node-load">18% CPU · 38% RAM</td>
+            </tr>
+            <tr>
+              <td>Operational State</td>
+              <td id="node-state" style="color:var(--accent-green)">Normal (Healthy)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Live Latency Rolling Graph -->
+        <div class="sparkline-container">
+          <div class="sparkline-header">
+            <span>SIMULATED PING OSCILLOSCOPE</span>
+            <span id="sparkline-val">1.2 ms avg</span>
+          </div>
+          <canvas id="ping-sparkline" class="sparkline-canvas" width="320" height="44"></canvas>
+        </div>
+
+        <!-- Interactive Diagnostic Actions -->
+        <div class="action-row">
+          <button id="btn-action-ping" class="primary-btn">⚡ Send Ping</button>
+          <button id="btn-action-traceroute">Traceroute</button>
+          <button id="btn-action-report">Diagnostic MD</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom HUD: Campus Live Telemetry Bar -->
+  <div class="bottom-hud">
+    <div class="hud-metric">
+      <span class="hud-metric-label">CAMPUS AGGREGATE</span>
+      <span class="hud-metric-val" id="hud-total-traffic">8.42 Gbps</span>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-metric">
+      <span class="hud-metric-label">CORE NOC LATENCY</span>
+      <span class="hud-metric-val" id="hud-latency">1.4 ms</span>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-metric">
+      <span class="hud-metric-label">PACKET LOSS</span>
+      <span class="hud-metric-val" id="hud-packet-loss" style="color:var(--accent-green)">0.00%</span>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-metric">
+      <span class="hud-metric-label">CONNECTED USERS</span>
+      <span class="hud-metric-val" id="hud-active-users">4,892</span>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-alert-indicator">
+      <div class="pulse-dot" id="hud-pulse-dot"></div>
+      <span id="hud-status-text">All Systems Operational</span>
+    </div>
+  </div>
+
+  <!-- View Toolbar Buttons -->
+  <div class="view-toolbar">
+    <button id="tool-walk" title="Toggle First-Person Ground Walk Mode">🚶</button>
+    <button id="tool-zoom-in" title="Zoom in">+</button>
+    <button id="tool-zoom-out" title="Zoom out">−</button>
+    <button id="tool-top-down" title="Top-down orthographic view">⬇</button>
+  </div>
+
+  <!-- Walk Mode Keyboard Overlay -->
+  <div id="walk-hints" class="walk-controls-overlay">
+    <div><strong>Walk Mode Active</strong></div>
+    <div style="margin-top:4px;">Use <span class="key-hint">W</span> <span class="key-hint">A</span> <span
+        class="key-hint">S</span> <span class="key-hint">D</span> or Arrow Keys to walk.</div>
+    <div>Click &amp; drag mouse to look around. Press <span class="key-hint">ESC</span> to exit.</div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast">Diagnostic ping sent to CITSC Core NOC: 1.2ms (0% loss)</div>
+
+  <!-- Architecture & System Info Modal -->
+  <div class="modal-backdrop" id="info-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>IIT Bhubaneswar Campus Network Architecture &amp; 3D Model</h3>
+        <button id="btn-close-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Campus Coordinates:</strong> 20.1507° N, 85.6655° E (Argul Permanent Campus, Jatni, Khordha, Odisha -
+          752050).</p>
+        <p style="margin-top:8px;">This 3D Network Digital Twin renders the user-designed schematic campus topology and
+          approximate buildings with high-speed fiber conduits, distribution switches, Wi-Fi 6 coverage, and synthetic
+          diagnostic scenarios.</p>
+
+        <h4 style="margin-top:14px;color:var(--accent-cyan);font-size:12px;font-family:var(--font-mono);">TOPOLOGY
+          DESIGN:</h4>
+        <pre>
+[ National Knowledge Network (NKN) 2x 10 Gbps Internet Gateway ]
+                        │
+         [ Next-Gen UTM Firewall Cluster & Border BGP ]
+                        │
+    [ CITSC Core NOC (Admin Building & Central Library) ]
+        Dual Cisco Nexus 9504 Core Switches (10G/40G)
+       ┌────────────────┼────────────────────────┐
+       ▼                ▼                        ▼
+ [ Ring A (West) ]  [ Ring B (East) ]      [ Ring C (Hostels) ]
+  • SES (Electrical) • SMS (Mechanical)    • Mahanadi Hall (MHR)
+  • SEOCS (Climate)  • SIF (Infrastructure)• Brahmaputra Hall (BHR)
+  • LHC 1 & 2 Halls  • SBS (Basic Sciences)• Ganga Hall (GHR)
+                     • CRIF (Instruments)  • Subarnarekha Hall (SHR)
+        </pre>
+
+        <h4 style="margin-top:14px;color:var(--accent-cyan);font-size:12px;font-family:var(--font-mono);">FEATURES &amp;
+          CAPABILITIES:</h4>
+        <ul style="padding-left:18px;margin-top:6px;">
+          <li><strong>3D Procedural Buildings:</strong> Photo-informed, approximate architectural massing for
+            Administrative Tower, School of Electrical Sciences, School of Mechanical Sciences, curved lecture-hall
+            volumes, Central Research Facility, and Hostel quadrangles.</li>
+          <li><strong>Optical Fiber Pulse Simulation:</strong> Animated photon packets traveling along bezier spline
+            conduits representing simulated 10G/40G data flows.</li>
+          <li><strong>Interactive Node Inspector:</strong> Click any building or network beacon to view switch hardware,
+            VLANs, ping oscilloscope, client counts, and run diagnostic commands.</li>
+          <li><strong>6 Network Incident Scenarios:</strong> Simulate baseline health, hostel evening bufferbloat,
+            tech-fest Wi-Fi overload, optical fiber attenuation, and core gateway failovers.</li>
+          <li><strong>Multiple 3D View Modes:</strong> Campus Model, Cyber Grid wireframe, Wi-Fi RF heatmap, and 3D
+            hierarchical tree.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Three.js Campus & Network Engine Script -->
+  <script>
+    'use strict';
+
+    // -------------------------------------------------------------
+    // Audio Synthesizer (Web Audio API)
+    // -------------------------------------------------------------
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+        this.muted = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playTone(freq, type, duration, gainVal = 0.08) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) { }
+      }
+      click() { this.playTone(800, 'sine', 0.05, 0.04); }
+      select() {
+        this.playTone(520, 'sine', 0.08, 0.05);
+        setTimeout(() => this.playTone(780, 'sine', 0.12, 0.05), 50);
+      }
+      ping() {
+        this.playTone(1200, 'triangle', 0.15, 0.08);
+        setTimeout(() => this.playTone(1600, 'sine', 0.2, 0.05), 80);
+      }
+      alarm() {
+        this.playTone(440, 'sawtooth', 0.2, 0.08);
+        setTimeout(() => this.playTone(330, 'sawtooth', 0.25, 0.08), 120);
+      }
+    }
+    const sound = new SoundFX();
+
+    // -------------------------------------------------------------
+    // IIT Bhubaneswar Campus Nodes & Building Metadata
+    // Coordinates centered around 20.1507° N, 85.6655° E
+    // -------------------------------------------------------------
+    const CAMPUS_BUILDINGS = [
+      {
+        id: 'citsc_noc',
+        name: 'CITSC Core Data Center & NOC',
+        role: 'Tier 1 Central NOC & HPC Supercomputer',
+        x: -15, z: 10, w: 26, d: 24, h: 26,
+        color: 0x38bdf8,
+        archType: 'admin_tower',
+        subnet: '10.20.1.0/24 (VLAN 1)',
+        hardware: 'Dual Cisco Nexus 9504 + FortiGate 3000F',
+        uplink: '2x 10G NKN Dark Fiber',
+        aps: 32,
+        baseClients: 1420,
+        basePing: 1.2,
+        baseThroughput: 6.4,
+        ring: 'Core'
+      },
+      {
+        id: 'admin_block',
+        name: 'Administrative Complex',
+        role: 'Directorate, Boardroom, Academic Admin',
+        x: -45, z: 25, w: 32, d: 22, h: 18,
+        color: 0x0ea5e9,
+        archType: 'admin_wing',
+        subnet: '10.20.10.0/24 (VLAN 10)',
+        hardware: 'Cisco Catalyst 9500 48Y4C',
+        uplink: '2x 10G SM Fiber to Core NOC',
+        aps: 24,
+        baseClients: 380,
+        basePing: 1.4,
+        baseThroughput: 0.85,
+        ring: 'Ring A'
+      },
+      {
+        id: 'ses',
+        name: 'School of Electrical Sciences (SES)',
+        role: 'CSE, EE, ECE Academic Laboratories',
+        x: -95, z: -25, w: 42, d: 30, h: 22,
+        color: 0x2dd4bf,
+        archType: 'ses_academic',
+        subnet: '10.20.20.0/24 (VLAN 20)',
+        hardware: 'Cisco Catalyst 9300 48P + 10G SFP+',
+        uplink: '10G SM Fiber (Ring A)',
+        aps: 48,
+        baseClients: 820,
+        basePing: 1.6,
+        baseThroughput: 1.95,
+        ring: 'Ring A'
+      },
+      {
+        id: 'seocs',
+        name: 'School of Earth, Ocean & Climate (SEOCS)',
+        role: 'Atmospheric Radar & Oceanography Labs',
+        x: -90, z: 50, w: 32, d: 26, h: 20,
+        color: 0x14b8a6,
+        archType: 'radar_building',
+        subnet: '10.20.60.0/24 (VLAN 60)',
+        hardware: 'Aruba CX 6300M 48-port PoE+',
+        uplink: '10G SM Fiber (Ring A)',
+        aps: 22,
+        baseClients: 260,
+        basePing: 1.8,
+        baseThroughput: 0.62,
+        ring: 'Ring A'
+      },
+      {
+        id: 'lhc1',
+        name: 'Lecture Hall Complex 1 (LHC-1)',
+        role: 'Curved teaching halls (approximate massing)',
+        x: -40, z: -85, w: 38, d: 34, h: 18,
+        color: 0xa855f7,
+        archType: 'lhc_dome',
+        subnet: '10.20.70.0/24 (VLAN 70)',
+        hardware: 'Extreme Networks X465 48P High-Density',
+        uplink: '10G SM Fiber (Ring A)',
+        aps: 36,
+        baseClients: 750,
+        basePing: 1.9,
+        baseThroughput: 1.45,
+        ring: 'Ring A'
+      },
+      {
+        id: 'lhc2',
+        name: 'Lecture Hall Complex 2 (LHC-2)',
+        role: 'Smart Seminar Theaters & Classrooms',
+        x: -80, z: -85, w: 34, d: 28, h: 17,
+        color: 0x9333ea,
+        archType: 'modern_block',
+        subnet: '10.20.72.0/24 (VLAN 72)',
+        hardware: 'Cisco Catalyst 9300 48P PoE+',
+        uplink: '10G SM Fiber (Ring A)',
+        aps: 28,
+        baseClients: 510,
+        basePing: 1.7,
+        baseThroughput: 0.98,
+        ring: 'Ring A'
+      },
+      {
+        id: 'sms',
+        name: 'School of Mechanical Sciences (SMS)',
+        role: 'Mechanical, CAD/CAM & Robotics Labs',
+        x: 65, z: -30, w: 46, d: 32, h: 18,
+        color: 0x06b6d4,
+        archType: 'sms_workshop',
+        subnet: '10.20.30.0/24 (VLAN 30)',
+        hardware: 'Cisco Catalyst 9300 48P + 10G SFP+',
+        uplink: '10G SM Fiber (Ring B)',
+        aps: 40,
+        baseClients: 640,
+        basePing: 1.8,
+        baseThroughput: 1.25,
+        ring: 'Ring B'
+      },
+      {
+        id: 'sif',
+        name: 'School of Infrastructure (SIF)',
+        role: 'Civil & Structural Dynamics High-Bay',
+        x: 85, z: 25, w: 36, d: 28, h: 17,
+        color: 0x0284c7,
+        archType: 'high_bay',
+        subnet: '10.20.50.0/24 (VLAN 50)',
+        hardware: 'Aruba CX 6200F 48-port',
+        uplink: '10G SM Fiber (Ring B)',
+        aps: 26,
+        baseClients: 340,
+        basePing: 2.1,
+        baseThroughput: 0.72,
+        ring: 'Ring B'
+      },
+      {
+        id: 'sbs',
+        name: 'School of Basic Sciences (SBS)',
+        role: 'Physics, Chemistry, Maths & Biosciences',
+        x: 30, z: -95, w: 40, d: 30, h: 19,
+        color: 0x3b82f6,
+        archType: 'modern_block',
+        subnet: '10.20.40.0/24 (VLAN 40)',
+        hardware: 'Cisco Catalyst 9300 48P',
+        uplink: '10G SM Fiber (Ring B)',
+        aps: 34,
+        baseClients: 490,
+        basePing: 1.9,
+        baseThroughput: 0.88,
+        ring: 'Ring B'
+      },
+      {
+        id: 'crif',
+        name: 'Central Research Instrumentation (CRIF)',
+        role: 'TEM, SEM, Cleanrooms & Analytical Center',
+        x: 45, z: -145, w: 30, d: 26, h: 16,
+        color: 0x6366f1,
+        archType: 'crif_cube',
+        subnet: '10.20.80.0/24 (VLAN 80)',
+        hardware: 'Cisco Catalyst 9300 24P Fiber',
+        uplink: '10G SM Fiber (Ring B)',
+        aps: 18,
+        baseClients: 160,
+        basePing: 2.0,
+        baseThroughput: 0.55,
+        ring: 'Ring B'
+      },
+      {
+        id: 'library',
+        name: 'Central Library & GCF',
+        role: 'Digital Learning Commons & General Computing',
+        x: -15, z: -38, w: 34, d: 26, h: 18,
+        color: 0x8b5cf6,
+        archType: 'library_glass',
+        subnet: '10.20.90.0/24 (VLAN 90)',
+        hardware: 'Aruba CX 6300M 48P + 30x AP-515',
+        uplink: '2x 10G Fiber to Core NOC',
+        aps: 30,
+        baseClients: 620,
+        basePing: 1.3,
+        baseThroughput: 1.15,
+        ring: 'Core'
+      },
+      {
+        id: 'mhr',
+        name: 'Mahanadi Hall of Residence (MHR)',
+        role: 'Boys Residential Complex (4 Wings)',
+        x: 135, z: 120, w: 48, d: 46, h: 18,
+        color: 0xf59e0b,
+        archType: 'quad_hostel',
+        subnet: '10.20.101.0/22 (VLAN 101)',
+        hardware: 'Cisco Catalyst 9300 48P + 52x APs',
+        uplink: '10G SM Fiber (Ring C)',
+        aps: 52,
+        baseClients: 1180,
+        basePing: 2.4,
+        baseThroughput: 2.85,
+        ring: 'Ring C'
+      },
+      {
+        id: 'bhr',
+        name: 'Brahmaputra Hall of Residence (BHR)',
+        role: 'Boys Residential Hall & Diners',
+        x: 75, z: 155, w: 44, d: 42, h: 17,
+        color: 0xd97706,
+        archType: 'quad_hostel',
+        subnet: '10.20.102.0/22 (VLAN 102)',
+        hardware: 'Aruba CX 6200F 48P + 46x APs',
+        uplink: '10G SM Fiber (Ring C)',
+        aps: 46,
+        baseClients: 940,
+        basePing: 2.5,
+        baseThroughput: 2.15,
+        ring: 'Ring C'
+      },
+      {
+        id: 'ghr',
+        name: 'Ganga Hall of Residence (GHR)',
+        role: 'Girls Residential Hall & Courtyard',
+        x: -40, z: 150, w: 42, d: 40, h: 17,
+        color: 0xec4899,
+        archType: 'quad_hostel',
+        subnet: '10.20.103.0/22 (VLAN 103)',
+        hardware: 'Cisco Catalyst 9300 48P + 44x APs',
+        uplink: '10G SM Fiber (Ring C)',
+        aps: 44,
+        baseClients: 860,
+        basePing: 2.2,
+        baseThroughput: 1.95,
+        ring: 'Ring C'
+      },
+      {
+        id: 'shr',
+        name: 'Subarnarekha Hall of Residence (SHR)',
+        role: 'Girls Residential Hall Complex',
+        x: -110, z: 135, w: 42, d: 40, h: 17,
+        color: 0xdb2777,
+        archType: 'quad_hostel',
+        subnet: '10.20.104.0/22 (VLAN 104)',
+        hardware: 'Cisco Catalyst 9300 48P + 42x APs',
+        uplink: '10G SM Fiber (Ring C)',
+        aps: 42,
+        baseClients: 780,
+        basePing: 2.3,
+        baseThroughput: 1.80,
+        ring: 'Ring C'
+      },
+      {
+        id: 'sac_sports',
+        name: 'Students Activity Center (SAC) & Sports',
+        role: 'Indoor Arena, Gymnasium, Athletic Track',
+        x: 25, z: 85, w: 38, d: 28, h: 14,
+        color: 0x10b981,
+        archType: 'sports_hall',
+        subnet: '10.20.110.0/24 (VLAN 110)',
+        hardware: 'Aruba CX 6200F 24P + 16x Outdoor APs',
+        uplink: '1G SM Optical Fiber to NOC',
+        aps: 16,
+        baseClients: 220,
+        basePing: 2.6,
+        baseThroughput: 0.38,
+        ring: 'Spur'
+      },
+      {
+        id: 'main_gate',
+        name: 'Campus Main Entrance Gate',
+        role: 'Security Gatehouse, ANPR & Surveillance',
+        x: -20, z: 235, w: 28, d: 12, h: 12,
+        color: 0x64748b,
+        archType: 'gate_arch',
+        subnet: '10.20.120.0/24 (VLAN 120)',
+        hardware: 'Industrial Ruggedized PoE Switch + Microwave Backup',
+        uplink: '1G SM Fiber + PTP Wireless',
+        aps: 8,
+        baseClients: 65,
+        basePing: 3.1,
+        baseThroughput: 0.18,
+        ring: 'Spur'
+      }
+    ];
+
+    // Optical Fiber Topology Links between buildings
+    const FIBER_LINKS = [
+      // Ring A (West Academic Ring)
+      { from: 'citsc_noc', to: 'admin_block', ring: 'Ring A', speed: '40 Gbps', state: 'normal' },
+      { from: 'admin_block', to: 'ses', ring: 'Ring A', speed: '10 Gbps', state: 'normal' },
+      { from: 'ses', to: 'seocs', ring: 'Ring A', speed: '10 Gbps', state: 'normal' },
+      { from: 'seocs', to: 'lhc2', ring: 'Ring A', speed: '10 Gbps', state: 'normal' },
+      { from: 'lhc2', to: 'lhc1', ring: 'Ring A', speed: '10 Gbps', state: 'normal' },
+      { from: 'lhc1', to: 'citsc_noc', ring: 'Ring A', speed: '10 Gbps', state: 'normal' },
+
+      // Ring B (East Academic Ring)
+      { from: 'citsc_noc', to: 'library', ring: 'Core', speed: '40 Gbps', state: 'normal' },
+      { from: 'library', to: 'sms', ring: 'Ring B', speed: '10 Gbps', state: 'normal' },
+      { from: 'sms', to: 'sif', ring: 'Ring B', speed: '10 Gbps', state: 'normal' },
+      { from: 'sif', to: 'sbs', ring: 'Ring B', speed: '10 Gbps', state: 'normal' },
+      { from: 'sbs', to: 'crif', ring: 'Ring B', speed: '10 Gbps', state: 'normal' },
+      { from: 'crif', to: 'citsc_noc', ring: 'Ring B', speed: '10 Gbps', state: 'normal' },
+
+      // Ring C (Residential Hostels Ring)
+      { from: 'citsc_noc', to: 'ghr', ring: 'Ring C', speed: '10 Gbps', state: 'normal' },
+      { from: 'ghr', to: 'shr', ring: 'Ring C', speed: '10 Gbps', state: 'normal' },
+      { from: 'shr', to: 'bhr', ring: 'Ring C', speed: '10 Gbps', state: 'normal' },
+      { from: 'bhr', to: 'mhr', ring: 'Ring C', speed: '10 Gbps', state: 'normal' },
+      { from: 'mhr', to: 'sac_sports', ring: 'Ring C', speed: '10 Gbps', state: 'normal' },
+      { from: 'sac_sports', to: 'citsc_noc', ring: 'Ring C', speed: '10 Gbps', state: 'normal' },
+
+      // Cross redundancy links
+      { from: 'ses', to: 'sms', ring: 'Cross-Tie', speed: '10 Gbps', state: 'normal' },
+      { from: 'lhc1', to: 'sbs', ring: 'Cross-Tie', speed: '10 Gbps', state: 'normal' },
+      { from: 'admin_block', to: 'main_gate', ring: 'Spur', speed: '1 Gbps', state: 'normal' }
+    ];
+
+    // Scenario definitions & operational metrics
+    const SCENARIOS = {
+      baseline: {
+        name: 'Optimal Campus Baseline (10G Multi-Ring)',
+        badge: 'OPTIMAL',
+        badgeClass: '',
+        explanation: 'All 10 Gbps single-mode optical fiber conduits healthy. Low end-to-end latency (<2ms), zero packet drops, balanced load across academic schools and residential halls.',
+        hudStatus: 'All Systems Operational · 10G Rings Normal',
+        pulseClass: '',
+        packetLoss: '0.00%',
+        avgLatency: 1.4,
+        throughput: 8.42,
+        activeUsers: 4892,
+        overrides: {}
+      },
+      hostel_congestion: {
+        name: 'Evening Hostel Congestion (MHR & BHR)',
+        badge: 'WARNING',
+        badgeClass: 'warning',
+        explanation: 'Peak evening student streaming & gaming traffic saturating 10G Residential Ring C. Bufferbloat observed on MHR and BHR uplinks, with 2.8% packet drops and elevated 38ms latency.',
+        hudStatus: 'Residential Ring C Saturated · QoS Throttling',
+        pulseClass: 'warning',
+        packetLoss: '2.84%',
+        avgLatency: 28.6,
+        throughput: 11.85,
+        activeUsers: 5640,
+        overrides: {
+          mhr: { ping: 42.5, state: 'Congested (96% Buffer)', load: '88% CPU · 79% RAM', throughput: 4.85, status: 'warning' },
+          bhr: { ping: 35.8, state: 'Congested (89% Buffer)', load: '82% CPU · 74% RAM', throughput: 3.90, status: 'warning' }
+        },
+        linkStates: {
+          'bhr-mhr': 'warning',
+          'mhr-sac_sports': 'warning'
+        }
+      },
+      lhc_overload: {
+        name: 'LHC-1 Hackathon Wi-Fi Overload (High Density)',
+        badge: 'WARNING',
+        badgeClass: 'warning',
+        explanation: 'Annual Tech Summit in LHC-1 causing massive RF channel contention. Over 850 simultaneous Wi-Fi 6 association requests on LHC-1 APs; airtime utilization exceeds 92%.',
+        hudStatus: 'LHC-1 Wi-Fi High Density Contention',
+        pulseClass: 'warning',
+        packetLoss: '1.45%',
+        avgLatency: 14.8,
+        throughput: 9.95,
+        activeUsers: 5420,
+        overrides: {
+          lhc1: { ping: 22.4, clients: 1350, state: 'RF Contention (92% Airtime)', load: '94% CPU · 85% RAM', throughput: 2.85, status: 'warning' }
+        }
+      },
+      ses_fiber_cut: {
+        name: 'SES Feeder Fiber Bend & Ring Failover',
+        badge: 'CRITICAL',
+        badgeClass: 'critical',
+        explanation: 'Optical attenuation on Admin-to-SES primary fiber conduit (excessive db loss). Spanning Tree Protocol (RSTP/OSPF) instantly engaged redundant Ring B cross-link.',
+        hudStatus: 'SES Primary Link Down · Failover Active',
+        pulseClass: 'critical',
+        packetLoss: '0.85%',
+        avgLatency: 8.2,
+        throughput: 7.90,
+        activeUsers: 4810,
+        overrides: {
+          ses: { ping: 12.8, state: 'Failover Active (Ring B Cross-Tie)', load: '45% CPU · 52% RAM', status: 'critical' }
+        },
+        linkStates: {
+          'admin_block-ses': 'critical',
+          'ses-sms': 'warning'
+        }
+      },
+      citsc_gateway_fail: {
+        name: 'CITSC Primary NKN Link Flap (BGP Failover)',
+        badge: 'CRITICAL',
+        badgeClass: 'critical',
+        explanation: 'National Knowledge Network (NKN) Primary 10G border gateway fiber cut outside Argul campus. Core router BGP auto-failed over to secondary 5G gateway with slight packet jitter.',
+        hudStatus: 'NKN Primary Down · Secondary Gateway Engaged',
+        pulseClass: 'critical',
+        packetLoss: '3.12%',
+        avgLatency: 19.4,
+        throughput: 4.80,
+        activeUsers: 4720,
+        overrides: {
+          citsc_noc: { ping: 21.0, uplink: 'Secondary 5G Backup Link', state: 'BGP Path Converging', load: '78% CPU · 64% RAM', status: 'critical' }
+        }
+      },
+      rogue_arp: {
+        name: 'Lab Rogue Device ARP Storm & CPU Spike',
+        badge: 'CRITICAL',
+        badgeClass: 'critical',
+        explanation: 'Misconfigured research workstation in SES Electrical lab generating 45,000 broadcast ARP packets/sec. Switch port auto-isolated by Dynamic ARP Inspection (DAI) & storm-control.',
+        hudStatus: 'SES Port Isolated · ARP Storm Mitigated',
+        pulseClass: 'critical',
+        packetLoss: '1.90%',
+        avgLatency: 16.5,
+        throughput: 8.10,
+        activeUsers: 4850,
+        overrides: {
+          ses: { ping: 34.2, state: 'Port Te1/0/18 Isolated (DAI Trigger)', load: '99% CPU (Storm Control Active)', status: 'critical' }
+        }
+      }
+    };
+
+    let activeScenarioKey = 'baseline';
+    let activeBuildingId = 'citsc_noc';
+    let viewMode = 'twin'; // 'twin' | 'cyber' | 'heatmap' | 'logical'
+    let isDroneOrbit = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let isWalkMode = false;
+    let showFibers = true;
+    let showPackets = true;
+    let showWifi = true;
+
+    // -------------------------------------------------------------
+    // Three.js Scene Setup & Architecture Generation
+    // -------------------------------------------------------------
+    const canvas = document.getElementById('viewport');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x070b12);
+    scene.fog = new THREE.FogExp2(0x070b12, 0.0018);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+    camera.position.set(0, 180, 260);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    controls.minDistance = 20;
+    controls.maxDistance = 650;
+    controls.target.set(0, 0, 0);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.55);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.2);
+    sunLight.position.set(150, 250, 100);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 10;
+    sunLight.shadow.camera.far = 700;
+    const d = 260;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+
+    const blueHemi = new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.4);
+    scene.add(blueHemi);
+
+    // Groups for layering
+    const campusGroup = new THREE.Group();
+    const buildingsGroup = new THREE.Group();
+    const networkGroup = new THREE.Group();
+    const fiberLinksGroup = new THREE.Group();
+    const packetsGroup = new THREE.Group();
+    const beaconsGroup = new THREE.Group();
+    const wifiDomesGroup = new THREE.Group();
+    const foliageGroup = new THREE.Group();
+
+    scene.add(campusGroup);
+    scene.add(buildingsGroup);
+    scene.add(networkGroup);
+    scene.add(foliageGroup);
+    networkGroup.add(fiberLinksGroup);
+    networkGroup.add(packetsGroup);
+    networkGroup.add(beaconsGroup);
+    networkGroup.add(wifiDomesGroup);
+
+    // -------------------------------------------------------------
+    // Campus Terrain, Roads, Water & Foliage
+    // -------------------------------------------------------------
+    function buildTerrain() {
+      // Main Ground Grass Plane
+      const groundGeo = new THREE.PlaneGeometry(800, 800, 32, 32);
+      const groundMat = new THREE.MeshStandardMaterial({
+        color: 0x13231c,
+        roughness: 0.9,
+        metalness: 0.1
+      });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.2;
+      ground.receiveShadow = true;
+      campusGroup.add(ground);
+
+      // Cyber Grid Plane (toggled in cyber mode)
+      const gridHelper = new THREE.GridHelper(800, 80, 0x0ea5e9, 0x1e293b);
+      gridHelper.position.y = 0.05;
+      gridHelper.visible = false;
+      gridHelper.name = 'cyber_grid';
+      campusGroup.add(gridHelper);
+
+      // Outer Academic Circular Ring Road
+      const ringRoadGeo = new THREE.RingGeometry(110, 126, 64);
+      const roadMat = new THREE.MeshStandardMaterial({
+        color: 0x242e38,
+        roughness: 0.8,
+        metalness: 0.2
+      });
+      const ringRoad = new THREE.Mesh(ringRoadGeo, roadMat);
+      ringRoad.rotation.x = -Math.PI / 2;
+      ringRoad.position.y = 0.02;
+      ringRoad.receiveShadow = true;
+      campusGroup.add(ringRoad);
+
+      // Inner Central Oval Road
+      const innerRoadGeo = new THREE.RingGeometry(52, 64, 48);
+      const innerRoad = new THREE.Mesh(innerRoadGeo, roadMat);
+      innerRoad.rotation.x = -Math.PI / 2;
+      innerRoad.position.y = 0.03;
+      innerRoad.receiveShadow = true;
+      campusGroup.add(innerRoad);
+
+      // Main Entrance Avenue (Subarnarekha Path / Main Approach)
+      const mainAveGeo = new THREE.PlaneGeometry(24, 280);
+      const mainAve = new THREE.Mesh(mainAveGeo, roadMat);
+      mainAve.rotation.x = -Math.PI / 2;
+      mainAve.position.set(-20, 0.04, 120);
+      mainAve.receiveShadow = true;
+      campusGroup.add(mainAve);
+
+      // East-West Connecting Boulevard
+      const ewRoadGeo = new THREE.PlaneGeometry(320, 16);
+      const ewRoad = new THREE.Mesh(ewRoadGeo, roadMat);
+      ewRoad.rotation.x = -Math.PI / 2;
+      ewRoad.position.set(0, 0.035, 10);
+      ewRoad.receiveShadow = true;
+      campusGroup.add(ewRoad);
+
+      // South Hostel Connecting Avenue (Mahanadi Marg)
+      const hostelRoadGeo = new THREE.PlaneGeometry(280, 16);
+      const hostelRoad = new THREE.Mesh(hostelRoadGeo, roadMat);
+      hostelRoad.rotation.x = -Math.PI / 2;
+      hostelRoad.position.set(20, 0.035, 130);
+      hostelRoad.receiveShadow = true;
+      campusGroup.add(hostelRoad);
+
+      // Central Campus Ornamental Water Pond
+      const lakeGeo = new THREE.CircleGeometry(32, 40);
+      const lakeMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        roughness: 0.1,
+        metalness: 0.9,
+        transparent: true,
+        opacity: 0.85
+      });
+      const lake = new THREE.Mesh(lakeGeo, lakeMat);
+      lake.rotation.x = -Math.PI / 2;
+      lake.position.set(0, 0.08, 48);
+      campusGroup.add(lake);
+
+      // Lake decorative rim
+      const lakeRimGeo = new THREE.RingGeometry(31.8, 33.5, 40);
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
+      const rim = new THREE.Mesh(lakeRimGeo, rimMat);
+      rim.rotation.x = -Math.PI / 2;
+      rim.position.set(0, 0.09, 48);
+      campusGroup.add(rim);
+
+      // Sports Complex Running Track (Red Ochre)
+      const trackGeo = new THREE.RingGeometry(38, 50, 32);
+      const trackMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.9 });
+      const track = new THREE.Mesh(trackGeo, trackMat);
+      track.rotation.x = -Math.PI / 2;
+      track.position.set(135, 0.05, 50);
+      campusGroup.add(track);
+
+      // Sports Center Grass Infield
+      const infieldGeo = new THREE.CircleGeometry(37.5, 32);
+      const infieldMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
+      const infield = new THREE.Mesh(infieldGeo, infieldMat);
+      infield.rotation.x = -Math.PI / 2;
+      infield.position.set(135, 0.06, 50);
+      campusGroup.add(infield);
+
+      // Plant Stylized 3D Low-Poly Trees along Avenues
+      const treeTrunkGeo = new THREE.CylinderGeometry(0.4, 0.7, 5, 5);
+      const treeLeavesGeo = new THREE.ConeGeometry(3.5, 9, 6);
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x451a03 });
+      const leavesMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.8 });
+
+      const treePositions = [
+        [-38, 50], [-38, 80], [-38, 110], [-38, 140], [-38, 170], [-38, 200],
+        [-2, 50], [-2, 80], [-2, 110], [-2, 140], [-2, 170], [-2, 200],
+        [-70, 0], [-110, 0], [40, 0], [80, 0], [110, 0],
+        [-60, -50], [-60, -110], [5, -60], [5, -110], [70, -70],
+        [80, 100], [40, 120], [-80, 110], [-60, 160], [20, 180]
+      ];
+
+      treePositions.forEach(([tx, tz]) => {
+        const tree = new THREE.Group();
+        const trunk = new THREE.Mesh(treeTrunkGeo, trunkMat);
+        trunk.position.y = 2.5;
+        trunk.castShadow = true;
+        tree.add(trunk);
+
+        const leaves = new THREE.Mesh(treeLeavesGeo, leavesMat);
+        leaves.position.y = 8;
+        leaves.castShadow = true;
+        tree.add(leaves);
+
+        tree.position.set(tx, 0, tz);
+        foliageGroup.add(tree);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // Procedural IIT Bhubaneswar Building Models
+    // -------------------------------------------------------------
+    const buildingMeshes = new Map();
+    const buildingDataMap = new Map();
+
+    function createBuildingMesh(b) {
+      const group = window.createCampusArchitecture(b);
+      group.position.set(b.x, 0, b.z);
+      buildingsGroup.add(group); buildingMeshes.set(b.id, group); buildingDataMap.set(b.id, b);
+      createNodeBeacon(b); createWifiDome(b);
+    }
+
+    // Floating 3D Diamond / Ring Beacon above each building
+    const beaconMeshes = new Map();
+    function createNodeBeacon(b) {
+      const beaconGroup = new THREE.Group();
+      beaconGroup.position.set(b.x, b.h + 8, b.z);
+
+      // Diamond core
+      const diamondGeo = new THREE.OctahedronGeometry(2.2, 0);
+      const diamondMat = new THREE.MeshBasicMaterial({
+        color: b.color,
+        wireframe: false
+      });
+      const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+      beaconGroup.add(diamond);
+
+      // Outer Pulsing Orbit Ring
+      const ringGeo = new THREE.RingGeometry(3.5, 4.2, 24);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: b.color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.7
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 2;
+      beaconGroup.add(ring);
+
+      beaconsGroup.add(beaconGroup);
+      beaconMeshes.set(b.id, { group: beaconGroup, diamond, ring, baseColor: b.color });
+    }
+
+    // Translucent Wi-Fi Coverage Hemispheres
+    const wifiDomes = new Map();
+    function createWifiDome(b) {
+      const radius = Math.max(b.w, b.d) * 1.1;
+      const domeGeo = new THREE.SphereGeometry(radius, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+      const domeMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.08,
+        wireframe: true
+      });
+      const dome = new THREE.Mesh(domeGeo, domeMat);
+      dome.position.set(b.x, 0.1, b.z);
+      wifiDomesGroup.add(dome);
+      wifiDomes.set(b.id, dome);
+    }
+
+    // -------------------------------------------------------------
+    // Underground Optical Fiber Spline Conduits & Data Packets
+    // -------------------------------------------------------------
+    const fiberMeshObjects = [];
+    const packetSystems = [];
+
+    function buildFiberNetwork() {
+      FIBER_LINKS.forEach(link => {
+        const fromB = buildingDataMap.get(link.from);
+        const toB = buildingDataMap.get(link.to);
+        if (!fromB || !toB) return;
+
+        const p1 = new THREE.Vector3(fromB.x, 0.4, fromB.z);
+        const p2 = new THREE.Vector3(toB.x, 0.4, toB.z);
+        const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+        mid.y += 0.8; // subtle elevation arc
+
+        const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
+
+        // Glowing Optical Conduit Cable Tube
+        const tubeGeo = new THREE.TubeGeometry(curve, 32, 0.6, 8, false);
+        const tubeMat = new THREE.MeshStandardMaterial({
+          color: 0x0ea5e9,
+          emissive: 0x0284c7,
+          emissiveIntensity: 0.6,
+          roughness: 0.3,
+          metalness: 0.8
+        });
+        const tubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
+        tubeMesh.userData = link;
+        fiberLinksGroup.add(tubeMesh);
+        fiberMeshObjects.push({ mesh: tubeMesh, link, curve });
+
+        // Moving Data Packet Photons along the fiber link
+        const particleCount = 8;
+        const packetGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        packetGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const packetMat = new THREE.PointsMaterial({
+          color: 0x4df0d2,
+          size: 3.2,
+          transparent: true,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending
+        });
+        const points = new THREE.Points(packetGeo, packetMat);
+        packetsGroup.add(points);
+
+        packetSystems.push({
+          curve,
+          points,
+          geo: packetGeo,
+          count: particleCount,
+          offsets: Array.from({ length: particleCount }, (_, i) => i / particleCount),
+          speed: 0.22,
+          link
+        });
+      });
+    }
+
+    // -------------------------------------------------------------
+    // Selection Highlighting Box
+    // -------------------------------------------------------------
+    const selectionBox = new THREE.BoxHelper(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)), 0x4df0d2);
+    selectionBox.visible = false;
+    scene.add(selectionBox);
+
+    // -------------------------------------------------------------
+    // Initialize Campus Scene
+    // -------------------------------------------------------------
+    buildTerrain();
+    CAMPUS_BUILDINGS.forEach(b => createBuildingMesh(b));
+    buildFiberNetwork();
+
+    // -------------------------------------------------------------
+    // Live Rolling Ping Oscilloscope (2D Canvas)
+    // -------------------------------------------------------------
+    const sparklineCanvas = document.getElementById('ping-sparkline');
+    const sparkCtx = sparklineCanvas.getContext('2d');
+    const pingHistory = Array.from({ length: 40 }, () => 1.2 + Math.random() * 0.4);
+
+    function drawSparkline() {
+      const w = sparklineCanvas.width;
+      const h = sparklineCanvas.height;
+      sparkCtx.clearRect(0, 0, w, h);
+
+      // Grid background line
+      sparkCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      sparkCtx.lineWidth = 1;
+      sparkCtx.beginPath();
+      sparkCtx.moveTo(0, h / 2);
+      sparkCtx.lineTo(w, h / 2);
+      sparkCtx.stroke();
+
+      const b = buildingDataMap.get(activeBuildingId) || CAMPUS_BUILDINGS[0];
+      const scenario = SCENARIOS[activeScenarioKey];
+      const override = scenario.overrides[b.id] || {};
+      const targetPing = override.ping !== undefined ? override.ping : b.basePing;
+      const noise = (Math.random() - 0.48) * (targetPing > 10 ? 4 : 0.4);
+      const currentVal = Math.max(0.5, targetPing + noise);
+
+      pingHistory.push(currentVal);
+      pingHistory.shift();
+
+      const maxVal = Math.max(5, ...pingHistory) * 1.25;
+
+      // Draw Gradient Area
+      const grad = sparkCtx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, 'rgba(77, 240, 210, 0.4)');
+      grad.addColorStop(1, 'rgba(77, 240, 210, 0.0)');
+
+      sparkCtx.beginPath();
+      sparkCtx.moveTo(0, h);
+      for (let i = 0; i < pingHistory.length; i++) {
+        const x = (i / (pingHistory.length - 1)) * w;
+        const y = h - (pingHistory[i] / maxVal) * (h - 6);
+        sparkCtx.lineTo(x, y);
+      }
+      sparkCtx.lineTo(w, h);
+      sparkCtx.closePath();
+      sparkCtx.fillStyle = grad;
+      sparkCtx.fill();
+
+      // Draw Line
+      sparkCtx.beginPath();
+      for (let i = 0; i < pingHistory.length; i++) {
+        const x = (i / (pingHistory.length - 1)) * w;
+        const y = h - (pingHistory[i] / maxVal) * (h - 6);
+        if (i === 0) sparkCtx.moveTo(x, y);
+        else sparkCtx.lineTo(x, y);
+      }
+      sparkCtx.strokeStyle = currentVal > 25 ? '#f87171' : currentVal > 15 ? '#fbbf24' : '#4df0d2';
+      sparkCtx.lineWidth = 2;
+      sparkCtx.stroke();
+
+      document.getElementById('sparkline-val').textContent = `${currentVal.toFixed(1)} ms`;
+      document.getElementById('node-ping').innerHTML = `${currentVal.toFixed(1)}<span class="stat-card-unit">ms</span>`;
+    }
+
+    // -------------------------------------------------------------
+    // UI Interaction & State Management
+    // -------------------------------------------------------------
+    function updateInspector(bId) {
+      const b = buildingDataMap.get(bId) || CAMPUS_BUILDINGS[0];
+      activeBuildingId = b.id;
+
+      const scenario = SCENARIOS[activeScenarioKey];
+      const override = scenario.overrides[b.id] || {};
+
+      document.getElementById('node-name').textContent = b.name;
+      document.getElementById('node-role').textContent = b.role;
+      document.getElementById('node-coords').textContent = `Schematic layout: x ${b.x}, z ${b.z} (not surveyed)`;
+      document.getElementById('node-subnet').textContent = b.subnet;
+      document.getElementById('node-hardware').textContent = b.hardware;
+      document.getElementById('node-uplink').textContent = override.uplink || b.uplink;
+      document.getElementById('node-aps').textContent = `${b.aps}x Wi-Fi 6 (802.11ax)`;
+
+      const clients = override.clients !== undefined ? override.clients : b.baseClients;
+      const throughput = override.throughput !== undefined ? override.throughput : b.baseThroughput;
+      const ping = override.ping !== undefined ? override.ping : b.basePing;
+      const stateText = override.state || 'Normal (Healthy)';
+      const loadText = override.load || '18% CPU · 38% RAM';
+      const statusClass = override.status || 'normal';
+
+      document.getElementById('node-clients').textContent = clients.toLocaleString();
+      document.getElementById('node-throughput').innerHTML = `${throughput.toFixed(2)}<span class="stat-card-unit">Gbps</span>`;
+      document.getElementById('node-load').textContent = loadText;
+
+      const stateEl = document.getElementById('node-state');
+      stateEl.textContent = stateText;
+      if (statusClass === 'critical') stateEl.style.color = 'var(--accent-red)';
+      else if (statusClass === 'warning') stateEl.style.color = 'var(--accent-amber)';
+      else stateEl.style.color = 'var(--accent-green)';
+
+      const badge = document.getElementById('node-badge');
+      badge.textContent = b.ring.toUpperCase();
+      badge.className = `inspector-header-status ${statusClass !== 'normal' ? statusClass : ''}`;
+
+      // Update Selection Box
+      const mesh = buildingMeshes.get(b.id);
+      if (mesh) {
+        selectionBox.setFromObject(mesh);
+        selectionBox.visible = true;
+      }
+    }
+
+    function applyScenario(sKey) {
+      activeScenarioKey = sKey;
+      const s = SCENARIOS[sKey];
+
+      document.getElementById('scenario-explanation').textContent = s.explanation;
+      const statusBadge = document.getElementById('scenario-status');
+      statusBadge.textContent = s.badge;
+      statusBadge.className = `inspector-header-status ${s.badgeClass}`;
+
+      document.getElementById('hud-status-text').textContent = s.hudStatus;
+      document.getElementById('hud-pulse-dot').className = `pulse-dot ${s.pulseClass}`;
+      document.getElementById('hud-packet-loss').textContent = s.packetLoss;
+      document.getElementById('hud-packet-loss').style.color = s.pulseClass === 'critical' ? 'var(--accent-red)' : s.pulseClass === 'warning' ? 'var(--accent-amber)' : 'var(--accent-green)';
+      document.getElementById('hud-latency').textContent = `${s.avgLatency.toFixed(1)} ms`;
+      document.getElementById('hud-total-traffic').textContent = `${s.throughput.toFixed(2)} Gbps`;
+      document.getElementById('hud-active-users').textContent = s.activeUsers.toLocaleString();
+
+      if (s.badgeClass === 'critical') sound.alarm();
+      else if (s.badgeClass === 'warning') sound.ping();
+
+      // Update Beacons colors based on overrides
+      CAMPUS_BUILDINGS.forEach(b => {
+        const beacon = beaconMeshes.get(b.id);
+        if (!beacon) return;
+        const ovr = s.overrides[b.id];
+        let color = beacon.baseColor;
+        if (ovr && ovr.status === 'critical') color = 0xf87171;
+        else if (ovr && ovr.status === 'warning') color = 0xfbbf24;
+
+        beacon.diamond.material.color.setHex(color);
+        beacon.ring.material.color.setHex(color);
+      });
+
+      // Update Fiber Link Colors
+      fiberMeshObjects.forEach(f => {
+        const linkId = `${f.link.from}-${f.link.to}`;
+        const linkIdRev = `${f.link.to}-${f.link.from}`;
+        const state = (s.linkStates && (s.linkStates[linkId] || s.linkStates[linkIdRev])) || 'normal';
+
+        if (state === 'critical') {
+          f.mesh.material.color.setHex(0xf87171);
+          f.mesh.material.emissive.setHex(0xdc2626);
+        } else if (state === 'warning') {
+          f.mesh.material.color.setHex(0xfbbf24);
+          f.mesh.material.emissive.setHex(0xd97706);
+        } else {
+          f.mesh.material.color.setHex(0x0ea5e9);
+          f.mesh.material.emissive.setHex(0x0284c7);
+        }
+      });
+
+      updateInspector(activeBuildingId);
+      showToast(`Scenario active: ${s.name}`);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // -------------------------------------------------------------
+    // Camera Navigation & Tweening
+    // -------------------------------------------------------------
+    let camTween = null;
+    function flyTo(targetPos, targetLookAt, duration = 1200) {
+      isDroneOrbit = false;
+      const startPos = camera.position.clone();
+      const startTarget = controls.target.clone();
+      const startTime = performance.now();
+
+      camTween = (now) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 0.5 - Math.cos(progress * Math.PI) / 2;
+
+        camera.position.lerpVectors(startPos, targetPos, ease);
+        controls.target.lerpVectors(startTarget, targetLookAt, ease);
+        controls.update();
+
+        if (progress < 1) {
+          requestAnimationFrame(camTween);
+        } else {
+          camTween = null;
+        }
+      };
+      requestAnimationFrame(camTween);
+      sound.select();
+    }
+
+    function focusBuilding(bId) {
+      const b = buildingDataMap.get(bId);
+      if (!b) return;
+      updateInspector(b.id);
+      flyTo(
+        new THREE.Vector3(b.x + 35, b.h + 35, b.z + 55),
+        new THREE.Vector3(b.x, b.h * 0.4, b.z)
+      );
+    }
+
+    // -------------------------------------------------------------
+    // Raycasting & Hover Detection
+    // -------------------------------------------------------------
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const tooltip = document.getElementById('hover-tooltip');
+    const tooltipTitle = document.getElementById('tooltip-title');
+    const tooltipSub = document.getElementById('tooltip-sub');
+
+    window.addEventListener('pointermove', (e) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(buildingsGroup.children, true);
+
+      if (intersects.length > 0) {
+        let obj = intersects[0].object;
+        while (obj.parent && obj.parent !== buildingsGroup) {
+          obj = obj.parent;
+        }
+        if (obj.userData && obj.userData.name) {
+          tooltipTitle.textContent = obj.userData.name;
+          tooltipSub.textContent = `${obj.userData.role} · ${obj.userData.subnet}`;
+          tooltip.style.left = `${e.clientX}px`;
+          tooltip.style.top = `${e.clientY}px`;
+          tooltip.style.display = 'block';
+          return;
+        }
+      }
+      tooltip.style.display = 'none';
+    });
+
+    window.addEventListener('click', (e) => {
+      // Ignore click if clicking UI overlays
+      if (e.target.closest('header, aside, .bottom-hud, .view-toolbar, .modal-backdrop')) return;
+
+      sound.init();
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(buildingsGroup.children, true);
+
+      if (intersects.length > 0) {
+        let obj = intersects[0].object;
+        while (obj.parent && obj.parent !== buildingsGroup) {
+          obj = obj.parent;
+        }
+        if (obj.userData && obj.userData.id) {
+          focusBuilding(obj.userData.id);
+        }
+      }
+    });
+
+    // -------------------------------------------------------------
+    // Keyboard Walk Controls (WASD / Arrows)
+    // -------------------------------------------------------------
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key === 'Escape' && isWalkMode) {
+        toggleWalkMode(false);
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    function toggleWalkMode(enable) {
+      isWalkMode = enable;
+      const overlay = document.getElementById('walk-hints');
+      const walkBtn = document.getElementById('tool-walk');
+
+      if (isWalkMode) {
+        overlay.classList.add('visible');
+        walkBtn.classList.add('active');
+        controls.maxPolarAngle = Math.PI / 2;
+        controls.minDistance = 2;
+        controls.maxDistance = 50;
+        camera.position.set(-20, 2.5, 180);
+        controls.target.set(-20, 2.5, 100);
+        showToast('Ground Walk Mode active: use W A S D or Arrow Keys');
+      } else {
+        overlay.classList.remove('visible');
+        walkBtn.classList.remove('active');
+        controls.maxPolarAngle = Math.PI / 2 - 0.05;
+        controls.minDistance = 20;
+        controls.maxDistance = 650;
+        camera.position.set(0, 180, 260);
+        controls.target.set(0, 0, 0);
+      }
+      controls.update();
+    }
+
+    function updateWalk(delta) {
+      if (!isWalkMode) return;
+      const speed = 28 * delta;
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      dir.y = 0;
+      dir.normalize();
+
+      const side = new THREE.Vector3(-dir.z, 0, dir.x);
+
+      if (keys['w'] || keys['arrowup']) {
+        camera.position.addScaledVector(dir, speed);
+        controls.target.addScaledVector(dir, speed);
+      }
+      if (keys['s'] || keys['arrowdown']) {
+        camera.position.addScaledVector(dir, -speed);
+        controls.target.addScaledVector(dir, -speed);
+      }
+      if (keys['a'] || keys['arrowleft']) {
+        camera.position.addScaledVector(side, -speed);
+        controls.target.addScaledVector(side, -speed);
+      }
+      if (keys['d'] || keys['arrowright']) {
+        camera.position.addScaledVector(side, speed);
+        controls.target.addScaledVector(side, speed);
+      }
+      camera.position.y = 2.5;
+      controls.target.y = 2.5;
+    }
+
+    // -------------------------------------------------------------
+    // Display Mode Switcher
+    // -------------------------------------------------------------
+    function setViewMode(mode) {
+      viewMode = mode;
+      document.querySelectorAll('[data-mode]').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === mode);
+      });
+
+      const gridHelper = campusGroup.getObjectByName('cyber_grid');
+
+      if (mode === 'twin') {
+        scene.background.setHex(0x070b12);
+        if (gridHelper) gridHelper.visible = false;
+        buildingsGroup.traverse(child => {
+          if (child.isMesh && child.material) {
+            child.material.wireframe = false;
+            child.material.transparent = false;
+            child.material.opacity = 1.0;
+          }
+        });
+        wifiDomesGroup.visible = showWifi;
+        wifiDomesGroup.children.forEach(d => {
+          d.material.opacity = 0.08;
+          d.material.wireframe = true;
+        });
+      } else if (mode === 'cyber') {
+        scene.background.setHex(0x020617);
+        if (gridHelper) gridHelper.visible = true;
+        buildingsGroup.traverse(child => {
+          if (child.isMesh && child.material) {
+            child.material.wireframe = true;
+            child.material.transparent = true;
+            child.material.opacity = 0.35;
+          }
+        });
+        wifiDomesGroup.visible = false;
+      } else if (mode === 'heatmap') {
+        scene.background.setHex(0x080e1a);
+        if (gridHelper) gridHelper.visible = false;
+        buildingsGroup.traverse(child => {
+          if (child.isMesh && child.material) {
+            child.material.wireframe = false;
+          }
+        });
+        wifiDomesGroup.visible = true;
+        wifiDomesGroup.children.forEach(d => {
+          d.material.opacity = 0.35;
+          d.material.wireframe = false;
+          d.material.color.setHex(0x34d399);
+        });
+      } else if (mode === 'logical') {
+        // Elevate nodes into vertical 3D hierarchy layers
+        scene.background.setHex(0x040812);
+        if (gridHelper) gridHelper.visible = true;
+        CAMPUS_BUILDINGS.forEach(b => {
+          const mesh = buildingMeshes.get(b.id);
+          const beacon = beaconMeshes.get(b.id);
+          if (mesh && beacon) {
+            let targetY = 0;
+            if (b.ring === 'Core') targetY = 80;
+            else if (b.ring === 'Ring A' || b.ring === 'Ring B') targetY = 45;
+            else targetY = 15;
+            mesh.position.y = targetY;
+            beacon.group.position.y = targetY + b.h + 8;
+          }
+        });
+        showToast('3D Logical Hierarchy Mode: Core (top) → Aggregation → Edge');
+        return;
+      }
+
+      // Restore Y position for non-logical modes
+      if (mode !== 'logical') {
+        CAMPUS_BUILDINGS.forEach(b => {
+          const mesh = buildingMeshes.get(b.id);
+          const beacon = beaconMeshes.get(b.id);
+          if (mesh) mesh.position.y = 0;
+          if (beacon) beacon.group.position.y = b.h + 8;
+        });
+      }
+      sound.click();
+    }
+
+    // -------------------------------------------------------------
+    // Animation Loop
+    // -------------------------------------------------------------
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      // Drone auto orbit
+      if (isDroneOrbit && !isWalkMode) {
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.0;
+      } else {
+        controls.autoRotate = false;
+      }
+      controls.update();
+
+      // Ground walk update
+      updateWalk(delta);
+
+      // Rotate and pulse node beacons
+      beaconMeshes.forEach(b => {
+        b.diamond.rotation.y += delta * 1.5;
+        b.diamond.rotation.x = Math.sin(time * 2) * 0.2;
+        const scale = 1.0 + Math.sin(time * 3 + b.diamond.position.x) * 0.15;
+        b.diamond.scale.set(scale, scale, scale);
+        b.ring.rotation.z += delta * 0.8;
+      });
+
+      // Animate optical data packets along fiber links
+      if (showPackets) {
+        packetSystems.forEach(ps => {
+          const positions = ps.geo.attributes.position.array;
+          const curve = ps.curve;
+          for (let i = 0; i < ps.count; i++) {
+            ps.offsets[i] = (ps.offsets[i] + delta * ps.speed) % 1.0;
+            const pt = curve.getPoint(ps.offsets[i]);
+            positions[i * 3] = pt.x;
+            positions[i * 3 + 1] = pt.y + 0.3;
+            positions[i * 3 + 2] = pt.z;
+          }
+          ps.geo.attributes.position.needsUpdate = true;
+        });
+      }
+
+      // Draw rolling ping graph every 6 frames
+      if (Math.floor(time * 60) % 6 === 0) {
+        drawSparkline();
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // -------------------------------------------------------------
+    // UI Event Handlers & Control Wiring
+    // -------------------------------------------------------------
+    // Scenario dropdown
+    document.getElementById('scenario-dropdown').addEventListener('change', (e) => {
+      applyScenario(e.target.value);
+    });
+
+    // View modes
+    document.getElementById('mode-twin').addEventListener('click', () => setViewMode('twin'));
+    document.getElementById('mode-cyber').addEventListener('click', () => setViewMode('cyber'));
+    document.getElementById('mode-heatmap').addEventListener('click', () => setViewMode('heatmap'));
+    document.getElementById('mode-logical').addEventListener('click', () => setViewMode('logical'));
+
+    // Layer toggles
+    document.getElementById('toggle-fibers').addEventListener('click', function () {
+      showFibers = !showFibers;
+      this.classList.toggle('active', showFibers);
+      fiberLinksGroup.visible = showFibers;
+      sound.click();
+    });
+    document.getElementById('toggle-packets').addEventListener('click', function () {
+      showPackets = !showPackets;
+      this.classList.toggle('active', showPackets);
+      packetsGroup.visible = showPackets;
+      sound.click();
+    });
+    document.getElementById('toggle-wifi').addEventListener('click', function () {
+      showWifi = !showWifi;
+      this.classList.toggle('active', showWifi);
+      wifiDomesGroup.visible = showWifi;
+      sound.click();
+    });
+
+    // Camera preset buttons
+    document.getElementById('cam-overview').addEventListener('click', () => {
+      flyTo(new THREE.Vector3(0, 230, 310), new THREE.Vector3(0, 0, 0));
+    });
+    document.getElementById('cam-admin').addEventListener('click', () => {
+      focusBuilding('citsc_noc');
+    });
+    document.getElementById('cam-academic').addEventListener('click', () => {
+      flyTo(new THREE.Vector3(-40, 110, -30), new THREE.Vector3(-40, 0, -80));
+    });
+    document.getElementById('cam-hostels').addEventListener('click', () => {
+      flyTo(new THREE.Vector3(60, 110, 230), new THREE.Vector3(60, 0, 140));
+    });
+    document.getElementById('cam-lhc').addEventListener('click', () => {
+      focusBuilding('lhc1');
+    });
+    document.getElementById('cam-drone').addEventListener('click', function () {
+      isDroneOrbit = !isDroneOrbit;
+      this.classList.toggle('active', isDroneOrbit);
+      if (isDroneOrbit) {
+        camera.position.set(180, 140, 180); controls.target.set(0, 0, 0);
+        showToast('Drone 360° Cinematic Orbit Enabled');
+      } else {
+        showToast('Drone Orbit Disabled');
+      }
+    });
+
+    // Header buttons
+    document.getElementById('btn-reset-cam').addEventListener('click', () => {
+      isWalkMode = false;
+      document.getElementById('walk-hints').classList.remove('visible');
+      document.getElementById('tool-walk').classList.remove('active');
+      flyTo(new THREE.Vector3(0, 180, 260), new THREE.Vector3(0, 0, 0));
+    });
+
+    document.getElementById('btn-audio').addEventListener('click', function () {
+      sound.muted = !sound.muted;
+      document.getElementById('audio-state').textContent = sound.muted ? 'Audio OFF' : 'Audio OFF';
+      this.classList.toggle('active', !sound.muted);
+      if (!sound.muted) sound.ping();
+    });
+
+    // Search input
+    document.getElementById('campus-search').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      if (!q) return;
+      const match = CAMPUS_BUILDINGS.find(b =>
+        b.name.toLowerCase().includes(q) ||
+        b.id.toLowerCase().includes(q) ||
+        b.role.toLowerCase().includes(q) ||
+        b.subnet.toLowerCase().includes(q)
+      );
+      if (match) {
+        focusBuilding(match.id);
+      }
+    });
+
+    // Floating tools
+    document.getElementById('tool-walk').addEventListener('click', () => {
+      toggleWalkMode(!isWalkMode);
+    });
+    document.getElementById('tool-zoom-in').addEventListener('click', () => {
+      const target = controls.target;
+      camera.position.lerp(target, 0.2);
+      controls.update();
+      sound.click();
+    });
+    document.getElementById('tool-zoom-out').addEventListener('click', () => {
+      const target = controls.target;
+      const offset = new THREE.Vector3().subVectors(camera.position, target).multiplyScalar(1.25);
+      camera.position.addVectors(target, offset);
+      controls.update();
+      sound.click();
+    });
+    document.getElementById('tool-top-down').addEventListener('click', () => {
+      flyTo(new THREE.Vector3(0, 360, 0.001), new THREE.Vector3(0, 0, 0));
+    });
+
+    // Inspector Action Buttons
+    document.getElementById('btn-action-ping').addEventListener('click', () => {
+      const b = buildingDataMap.get(activeBuildingId);
+      sound.ping();
+      showToast(`Simulated ping to ${b.name} (${b.subnet.split(' ')[0]}): 1.4ms RTT (0% loss)`);
+    });
+    document.getElementById('btn-action-traceroute').addEventListener('click', () => {
+      const b = buildingDataMap.get(activeBuildingId);
+      sound.click();
+      showToast(`Simulated traceroute: Client → CITSC-CORE-01 (10.20.1.1) → ${b.id.toUpperCase()}-SW01 (1 hop)`);
+    });
+    document.getElementById('btn-action-report').addEventListener('click', () => {
+      const b = buildingDataMap.get(activeBuildingId);
+      const s = SCENARIOS[activeScenarioKey];
+      const mdContent = `# IIT Bhubaneswar Network Simulation Brief\n\nNot live data. Hardware, addresses and link capacities are illustrative.\n\n` +
+        `**Node:** ${b.name}\n` +
+        `**Location:** 20.1507° N, 85.6655° E (Argul Campus)\n` +
+        `**Scenario:** ${s.name}\n` +
+        `**Status:** ${s.badge}\n` +
+        `**Subnet:** ${b.subnet}\n` +
+        `**Hardware:** ${b.hardware}\n` +
+        `**Uplink:** ${b.uplink}\n` +
+        `**Active Wi-Fi APs:** ${b.aps} APs (802.11ax)\n\n` +
+        `## Scripted Scenario Explanation (not an AI diagnosis)\n${s.explanation}\n\n` +
+        `## Recommended Action Plan\n` +
+        `1. Verify Spanning Tree Protocol (RSTP) convergence on ${b.ring}.\n` +
+        `2. Check interface optical power levels (Tx/Rx dBm) on SFP+ transceivers.\n` +
+        `3. Review CITSC Core NOC NetFlow telemetry for bandwidth hogs.\n`;
+
+      const blob = new Blob([mdContent], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `IIT_BBS_Incident_${b.id}_${activeScenarioKey}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Incident Report Markdown exported successfully');
+    });
+
+    // Export Topology JSON
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+      const exportData = {
+        campus: 'Indian Institute of Technology Bhubaneswar (Argul Permanent Campus)',
+        coordinates: { latitude: 20.1507018, longitude: 85.6654942 },
+        sourceUrl: 'https://www.google.com/maps/@20.1507018,85.6654942,818m',
+        generatedAt: new Date().toISOString(),
+        buildings: CAMPUS_BUILDINGS,
+        fiberLinks: FIBER_LINKS,
+        activeScenario: activeScenarioKey,
+        scenarios: SCENARIOS
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'iit_bhubaneswar_network_topology.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Topology JSON model exported successfully');
+    });
+
+    // Architecture Modal
+    const infoModal = document.getElementById('info-modal');
+    document.getElementById('btn-info-modal').addEventListener('click', () => {
+      infoModal.classList.add('open');
+      sound.click();
+    });
+    document.getElementById('btn-close-modal').addEventListener('click', () => {
+      infoModal.classList.remove('open');
+    });
+    infoModal.addEventListener('click', (e) => {
+      if (e.target === infoModal) infoModal.classList.remove('open');
+    });
+
+    // Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Start
+    document.getElementById('cam-drone').classList.toggle('active', isDroneOrbit);
+    updateInspector('citsc_noc');
+    animate();
+  </script>
+  <script src="/campus-netcoop.js"></script>
+</body>
+
+</html>

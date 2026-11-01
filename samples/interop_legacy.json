@@ -1,0 +1,63 @@
+{
+  "schema": "0.9",
+  "ts": 1793462194.4582489,
+  "nodes": [
+    {
+      "name": "CORE_RTR_01",
+      "kind": "router",
+      "state": "up",
+      "cpu": 0.215,
+      "util": 0.434,
+      "drops": 0.4,
+      "errors": 0
+    },
+    {
+      "name": "HOSTEL_CORE_SW_01",
+      "kind": "switch",
+      "state": "up",
+      "cpu": 0.62,
+      "util": 0.94,
+      "drops": 160,
+      "errors": 1
+    },
+    {
+      "name": "DEPT_SW_02",
+      "kind": "switch",
+      "state": "up",
+      "cpu": 0.16399999999999998,
+      "util": 0.441,
+      "drops": 0.4,
+      "errors": 3
+    },
+    {
+      "name": "HOSTEL_AP_07",
+      "kind": "ap",
+      "state": "up",
+      "cpu": 0.33899999999999997,
+      "util": 0.39899999999999997,
+      "drops": 3.5,
+      "errors": 0
+    }
+  ],
+  "edges": [
+    [
+      "CORE_RTR_01",
+      "HOSTEL_CORE_SW_01"
+    ],
+    [
+      "CORE_RTR_01",
+      "DEPT_SW_02"
+    ],
+    [
+      "HOSTEL_CORE_SW_01",
+      "HOSTEL_AP_07"
+    ]
+  ],
+  "kpi": {
+    "latency_s": 0.28,
+    "jitter_s": 0.018,
+    "loss_ratio": 0.031,
+    "throughput_mbps": 930,
+    "bandwidth_mbps": 1000
+  }
+}

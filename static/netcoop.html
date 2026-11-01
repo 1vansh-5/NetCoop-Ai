@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#102c27">
+    <title>NetCoop AI · Network intelligence</title>
+    <link rel="stylesheet" href="/style.css">
+    <script defer src="/app.js"></script>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <a class="brand" href="/" aria-label="NetCoop home"><span class="brand-icon">⌘</span> netcoop<span
+                class="ai">AI</span></a>
+        <div class="workspace"><span class="campus">B</span>
+            <div><strong>Campus operations</strong><small>Network intelligence workspace</small></div>
+        </div>
+        <div class="nav-label">WORKSPACE</div>
+        <nav><button class="nav active" data-view="overview"><span>◫</span> Mission control</button><button class="nav"
+                data-view="workflow"><span>⌘</span> Agent workflow <b>3D</b></button><button class="nav"
+                data-view="history"><span>◷</span> Incident history</button><button class="nav"
+                id="protocol"><span>≋</span> Protocol & architecture</button></nav>
+        <div class="nav-label second">YOUR AGENT TEAM</div>
+        <div class="team" id="team"></div>
+        <div class="sidebar-bottom">
+            <div class="connection"><i></i> Local diagnostic workspace</div>
+            <p>Synthetic telemetry. Real collaboration.</p>
+            <div class="profile"><span>NC</span>
+                <div><strong>Network operator</strong><small>Hackathon edition / v2.0</small></div>
+            </div>
+        </div>
+    </aside>
+    <div class="shell">
+        <header>
+            <div class="breadcrumb">Workspace <span>/</span> <strong id="pageTitle">Mission control</strong></div>
+            <div class="header-right"><span class="pill"><i></i> MCP · stdio</span><span id="clock"></span></div>
+        </header>
+        <main>
+            <div class="heading">
+                <div>
+                    <div class="eyebrow">OBSERVE. COLLABORATE. RESOLVE.</div>
+                    <h1>Your network, understood.</h1>
+                    <p>From scattered signals to one evidence-backed diagnosis.</p>
+                </div><button class="button secondary" id="upload">↑ Import telemetry</button><input hidden id="file"
+                    type="file" accept=".json,.py,application/json,text/x-python">
+            </div>
+            <section class="command-bar" aria-label="Run configuration">
+                <div><label for="scenario">INVESTIGATION SCENARIO</label><select id="scenario"></select></div>
+                <div><label for="mode">REASONING ENGINE</label><select id="mode">
+                        <option value="demo">Deterministic · offline demo</option>
+                        <option value="gemini">Google Gemini + MCP tools</option>
+                    </select></div>
+                <div class="run-source"><i></i><span id="source">Reproducible synthetic data</span></div><button
+                    class="button primary" id="run">▶ <span>Run investigation</span></button>
+            </section>
+            <div id="notice" role="status" aria-live="polite"></div>
+            <section class="metrics" id="metrics">
+                <article><span>NETWORK LATENCY</span>
+                    <div><strong id="latency">—</strong><small>ms</small><svg viewBox="0 0 100 30">
+                            <path d="M0 24 L15 20 L28 23 L40 9 L53 17 L65 12 L80 15 L100 3" />
+                        </svg></div>
+                    <p id="latencyNote">Awaiting telemetry</p>
+                </article>
+                <article><span>PACKET LOSS</span>
+                    <div><strong id="loss">—</strong><small>%</small><span class="metric-icon">⌁</span></div>
+                    <p>End-to-end delivery signal</p>
+                </article>
+                <article><span>DEVICES IN SCOPE</span>
+                    <div><strong id="devices">—</strong><small>nodes</small><span class="metric-icon">▧</span></div>
+                    <p id="quality">Data quality not assessed</p>
+                </article>
+                <article><span>DIAGNOSTIC CONFIDENCE</span>
+                    <div><strong id="confidence">—</strong><small>%</small><span class="metric-icon">◎</span></div>
+                    <p>Evidence score · not a probability</p>
+                </article>
+            </section>
+            <div id="dashboard">
+                <section class="investigation-grid">
+                    <article class="panel graph-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Agent orchestration <span class="badge">LIVE WORKFLOW</span></h2>
+                                <p>Independent expertise. Shared context. One clear outcome.</p>
+                            </div><button class="icon-button" id="reset" title="Reset 3D camera"
+                                aria-label="Reset 3D camera">⤢</button>
+                        </div>
+                        <div class="graph"><canvas id="graph"
+                                aria-label="Interactive 3D agent workflow. Drag to rotate. The accessible message trace below provides every agent event."></canvas>
+                            <div class="graph-top"><span><i></i> <b id="graphStatus">Ready to
+                                        investigate</b></span><span>3D SPATIAL VIEW</span></div>
+                            <div id="nodeInfo" class="node-info">Select an agent to explore its responsibility</div>
+                            <div class="graph-bottom"><span>◉ &nbsp; Drag to orbit · click a node to inspect</span><span
+                                    id="eventCount">0 messages exchanged</span></div>
+                        </div>
+                        <div class="flow-footer"><span><i class="dot mint"></i> MCP tools</span><span><i
+                                    class="dot blue"></i> Specialist agents</span><span><i class="dot purple"></i>
+                                Reasoning & reporting</span><span class="transport">JSON-RPC 2.0 ↗</span></div>
+                    </article>
+                    <article class="panel result-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Diagnostic brief</h2>
+                                <p id="incidentId">Your next investigation starts here</p>
+                            </div><span class="status-badge" id="reportStatus">STANDBY</span>
+                        </div>
+                        <div id="report">
+                            <div class="empty-report">
+                                <div class="radar">◎</div>
+                                <h3>Clarity is one run away.</h3>
+                                <p>Choose a scenario to watch the agents gather evidence, compare hypotheses, and
+                                    explain the probable cause.</p>
+                                <div class="mini-steps"><span>01 &nbsp; Collect</span><span>02 &nbsp;
+                                        Correlate</span><span>03 &nbsp; Explain</span></div>
+                            </div>
+                        </div>
+                        <div class="report-footer"><button class="button secondary" id="download" disabled>↓ Export
+                                JSON</button><button class="text-button" id="markdown" disabled>Markdown ↗</button>
+                        </div>
+                    </article>
+                </section>
+                <section class="bottom-grid">
+                    <article class="panel trace-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Agent message stream <span class="count" id="traceCount">0</span></h2>
+                                <p>A transparent record of every tool call and decision.</p>
+                            </div><span class="live-label">● EVENT TRACE</span>
+                        </div>
+                        <div id="trace" class="trace" role="log" aria-live="off">
+                            <div class="trace-empty">The message bus is ready. Launch an investigation to follow the
+                                evidence.</div>
+                        </div>
+                    </article>
+                    <article class="panel evidence-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Evidence ledger</h2>
+                                <p>Measurements behind the diagnosis.</p>
+                            </div><span class="count" id="evidenceCount">0</span>
+                        </div>
+                        <div id="evidence" class="evidence">
+                            <div class="trace-empty">Verified agent findings will appear here.</div>
+                        </div>
+                    </article>
+                </section>
+            </div>
+            <section id="historyView" class="panel" hidden>
+                <div class="panel-heading">
+                    <div>
+                        <h2>Recent investigations</h2>
+                        <p>Stored locally · latest 20 investigations · click to inspect</p>
+                    </div><button id="refresh" class="button secondary">Refresh</button>
+                </div>
+                <div id="history"></div>
+            </section>
+            <footer><span>NETCOOP AI <b>/</b> Built for explainable network operations</span><span>Google Gemini · Model
+                    Context Protocol · Multi-agent intelligence</span></footer>
+        </main>
+    </div>
+    <dialog id="dialog"><button class="icon-button close" id="close" aria-label="Close dialog">×</button>
+        <div id="dialogContent"></div>
+    </dialog>
+    <a href="/"
+        style="position:fixed;right:20px;bottom:20px;z-index:25;padding:10px 16px;background:#173f31;color:#ddffe9;border:1px solid #70977b;border-radius:8px;font:600 11px system-ui;text-decoration:none">←
+        Campus animation</a>
+</body>
+
+</html>

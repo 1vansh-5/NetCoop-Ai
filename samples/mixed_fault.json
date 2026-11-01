@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "timestamp": 1793462194.4588413,
+  "devices": [
+    {
+      "id": "CORE_RTR_01",
+      "type": "router",
+      "status": "up",
+      "cpu_pct": 21.5,
+      "mem_pct": 38.0,
+      "if_errors": 0,
+      "queue_drops": 0.4,
+      "link_util_pct": 43.4
+    },
+    {
+      "id": "HOSTEL_CORE_SW_01",
+      "type": "switch",
+      "status": "up",
+      "cpu_pct": 62,
+      "mem_pct": 36.2,
+      "if_errors": 1,
+      "queue_drops": 160,
+      "link_util_pct": 94
+    },
+    {
+      "id": "DEPT_SW_02",
+      "type": "switch",
+      "status": "degraded",
+      "cpu_pct": 16.4,
+      "mem_pct": 36.8,
+      "if_errors": 830,
+      "queue_drops": 0.4,
+      "link_util_pct": 44.1
+    },
+    {
+      "id": "HOSTEL_AP_07",
+      "type": "ap",
+      "status": "up",
+      "cpu_pct": 33.9,
+      "mem_pct": 47.6,
+      "if_errors": 0,
+      "queue_drops": 3.5,
+      "link_util_pct": 39.9,
+      "signal_dbm": -48.2,
+      "retransmit_pct": 1.1
+    }
+  ],
+  "links": [
+    [
+      "CORE_RTR_01",
+      "HOSTEL_CORE_SW_01"
+    ],
+    [
+      "CORE_RTR_01",
+      "DEPT_SW_02"
+    ],
+    [
+      "HOSTEL_CORE_SW_01",
+      "HOSTEL_AP_07"
+    ]
+  ],
+  "metrics": {
+    "latency_ms": 95,
+    "jitter_ms": 30,
+    "packet_loss_pct": 6.5,
+    "throughput_mbps": 930,
+    "bandwidth_mbps": 1000
+  },
+  "services": {
+    "dns": "ok",
+    "dhcp": "ok"
+  }
+}

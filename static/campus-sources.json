@@ -1,0 +1,41 @@
+{
+  "model_status": "Photo-informed schematic; not a satellite reconstruction or surveyed digital twin.",
+  "layout": "The uploaded ZIP supplies all node positions, dimensions, hardware, IP addresses, fiber rings and simulated traffic. These have NOT been verified as actual IIT assets.",
+  "architecture": {
+    "admin_block": "Approximate stepped light facade, wings and central dome, based on published aerial photos.",
+    "lhc1_lhc2": "Curved teaching halls informed by published Udayagiri/Lalitgiri photos; exact names-to-node mapping is unverified.",
+    "other_buildings": "Detailed illustrative massing: courtyard wings, floor bands, windows, roofs, entrance colonnades. Not traced footprints.",
+    "citsc_noc": "Logical simulation node, not a verified physical building location."
+  },
+  "references": [
+    {
+      "title": "IIT Bhubaneswar: About Campus",
+      "url": "https://www.iitbbs.ac.in/index.php/home/about-campus/",
+      "use": "Official campus context"
+    },
+    {
+      "title": "IIT Bhubaneswar annual report 2022–23",
+      "url": "https://www.iitbbs.ac.in/wp-content/uploads/2024/03/IITB-Annual-Report-English-2022-23.pdf",
+      "use": "Campus infrastructure context"
+    },
+    {
+      "title": "Campus gallery / administrative aerial",
+      "url": "https://www.collegebatch.com/77-indian-institute-of-technology-campus-tour-bhubaneswar",
+      "use": "Administrative massing visual reference"
+    },
+    {
+      "title": "Indian Strings Meeting 2025 venue / Udayagiri Hall",
+      "url": "https://indico.global/event/15522/page/4797-venue",
+      "use": "Curved lecture-hall visual reference"
+    }
+  ],
+  "not_claimed": [
+    "Measured dimensions",
+    "Surveyed building positions",
+    "Current satellite footprints",
+    "Actual VLANs or hardware inventory",
+    "Live traffic",
+    "Calibrated RF coverage"
+  ],
+  "reviewed": "2026-11-01"
+}
