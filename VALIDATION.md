@@ -1,3 +1,11 @@
+# Update validation
+
+- 51 tests passed, including existing regression tests and 8 new Groq tests.
+- Tested real MCP transport, telemetry provider execution, HTTP streaming/history, Groq override of specialist cause, invalid AI output, missing-key fallback and stale-data protection.
+- JavaScript syntax checks passed for app.js and campus-netcoop.js. Python compilation passed.
+- No real Groq API request was made: the user must configure their key. Groq responses were mocked in automated tests.
+- Visual browser interaction was not tested in this environment.
+
 # Verification record
 
 Verified locally on 31 October 2026 with Python 3.14 and the pinned dependency versions in `requirements.txt`.

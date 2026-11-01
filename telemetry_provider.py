@@ -1,10 +1,12 @@
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timezone
+
+SCENARIOS = ["normal", "latency_spike", "hardware_failure"]
 
 def generate_telemetry(fault_type="normal"):
     data = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "device_id": f"SW_CAMPUS_{random.randint(1, 10)}",
         "metrics": {}
     }
@@ -43,4 +45,5 @@ def generate_telemetry(fault_type="normal"):
     return data
 
 # Example usage: print a critical scenario JSON
-print(json.dumps(generate_telemetry("hardware_failure"), indent=2))
+if __name__ == "__main__":
+    print(json.dumps(generate_telemetry("hardware_failure"), indent=2))

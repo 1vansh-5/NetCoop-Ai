@@ -110,7 +110,7 @@ def fetch(scenario):
     timeout = float(os.getenv('NETCOOP_PROVIDER_TIMEOUT', '10'))
     with tempfile.TemporaryDirectory(prefix='netcoop_provider_') as tmp:
         out = Path(tmp) / 'result.json'
-        env = {k: v for k, v in os.environ.items() if k != 'GEMINI_API_KEY'}
+        env = {k: v for k, v in os.environ.items() if k not in ('GEMINI_API_KEY', 'GROQ_API_KEY')}
         try:
             proc = subprocess.run([sys.executable, '-c', HARNESS, str(p), str(out), name, info['function'] or ''],
                                   cwd=p.parent, env=env, capture_output=True, timeout=timeout)

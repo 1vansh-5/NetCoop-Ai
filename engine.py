@@ -11,6 +11,7 @@ import httpx
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from netcoop import LABELS, correlate, runbook
+from groq_decision import decide as groq_decide
 
 ROOT = Path(__file__).resolve().parent
 # Minimal .env support without exposing secrets to the UI or subprocess arguments.
@@ -18,7 +19,7 @@ if (ROOT/'.env').exists():
     for line in (ROOT/'.env').read_text(encoding='utf-8').splitlines():
         if '=' in line and not line.lstrip().startswith('#'):
             k,v = line.split('=',1)
-            if k.strip() in ('GEMINI_API_KEY','GEMINI_MODEL'):
+            if k.strip() in ('GEMINI_API_KEY','GEMINI_MODEL','GROQ_API_KEY','GROQ_MODEL','NETCOOP_PROVIDER','NETCOOP_PROVIDER_TIMEOUT'):
                 os.environ.setdefault(k.strip(),v.strip().strip('\"').strip("'"))
 
 async def investigate(telemetry, decision, call, emit):
@@ -69,7 +70,8 @@ async def investigate(telemetry, decision, call, emit):
         # Never include response bodies/URLs/keys in user-visible errors.
         return {'status':'unavailable','summary':f'Gemini unavailable ({type(exc).__name__}). The deterministic diagnosis remains available.','tool_calls':used}
 
-async def diagnose(scenario='congestion', raw=None, seed=7, use_llm=False, emit_callback=None):
+async def diagnose(scenario='congestion', raw=None, seed=7, use_llm=False, emit_callback=None, llm_provider=None):
+    ai_provider = llm_provider or ('gemini' if use_llm else 'demo')
     started = time.monotonic()
     incident = 'INC-' + uuid.uuid4().hex[:8].upper()
     messages=[]
@@ -81,7 +83,7 @@ async def diagnose(scenario='congestion', raw=None, seed=7, use_llm=False, emit_
     report={'incident_id':incident,'status':'error','cause':'insufficient_evidence','suspected_root_cause':'Diagnosis could not be completed','confidence':0,'affected_devices':[],'supporting_evidence':[],'alternative_causes':[],'recommended_actions':['Check telemetry and retry.'],'evidence_sources':[],'limitations':[]}
     normalized=None
     try:
-        await emit('orchestrator','mcp','plan',{'steps':['Validate telemetry','Dispatch three specialists concurrently','Reconcile hypotheses','Investigate with Gemini if enabled','Produce report'], 'mode':'Google Gemini + deterministic agents' if use_llm else 'Offline deterministic agents'})
+        await emit('orchestrator','mcp','plan',{'steps':['Validate telemetry','Dispatch three specialists concurrently','Reconcile hypotheses','Choose diagnosis with configured AI if enabled','Produce report'], 'mode':ai_provider + ' + specialist evidence'})
         params=StdioServerParameters(command=sys.executable,args=[str(ROOT/'mcp_server.py')],env={k:v for k,v in os.environ.items() if k in ('NETCOOP_PROVIDER','NETCOOP_PROVIDER_TIMEOUT')})
         async with stdio_client(params) as (read,write):
             async with ClientSession(read,write) as session:
@@ -117,14 +119,21 @@ async def diagnose(scenario='congestion', raw=None, seed=7, use_llm=False, emit_
                         return None
                 results=[r for r in await asyncio.gather(*(specialist(a) for a in ('performance','infrastructure','connectivity'))) if r is not None]
                 decision=correlate(results,normalized)
-                await emit('correlation','gemini','hypothesis',decision)
-                ai=await investigate(normalized,decision,call,emit) if use_llm else {'status':'offline','summary':'Offline mode: evidence scored by three independent specialists. Google Gemini investigation is disabled.','tool_calls':0}
-                await emit('gemini','reporting','narrative',ai)
+                baseline = dict(decision)
+                await emit('correlation',ai_provider,'hypothesis',decision)
+                ai=await investigate(normalized,decision,call,emit) if ai_provider == 'gemini' else {'status':'offline','summary':'Offline mode: evidence scored by three independent specialists. AI decision-making is disabled.','tool_calls':0}
+                if ai_provider == 'groq':
+                    ai = await groq_decide(normalized, baseline, results, emit)
+                    if ai.get('decision'):
+                        decision = ai['decision']
+                report['decision_source'] = 'groq' if ai_provider == 'groq' and ai['status'] == 'connected' else 'specialist_fallback' if ai_provider == 'groq' else 'specialists'
+                report['specialist_baseline'] = baseline
+                await emit(ai_provider,'reporting','narrative',ai)
                 book=await call('get_runbook',{'cause':decision['cause']},'reporting')
                 evidence=[{'metric':f['signal'],'value':f['value'],'unit':f['unit'],'interpretation':f['interpretation'],'device':f['device'],'source':r['agent']} for r in results for f in r['findings']]
                 affected=sorted({e['device'] for e in evidence if e['device']})
                 neighbors=sorted({b if a in affected else a for a,b in normalized['links'] if (a in affected) != (b in affected)})
-                limitations=list(normalized['quality']['warnings'])+[(f"Telemetry produced by the provider script {raw['provider']['file']}; provenance not independently verified." if isinstance(raw,dict) and isinstance(raw.get('provider'),dict) else 'Synthetic scenario data.' if scenario!='custom' else 'User-supplied telemetry; provenance not independently verified.'), 'Heuristic confidence is not a calibrated probability.','Root cause requires verification; no corrective actions were executed.']+[str(x)[:300] for x in (raw.get('import_notes') if isinstance(raw.get('import_notes'),list) else [])[:10]]
+                limitations=list(normalized['quality']['warnings'])+[(f"Telemetry produced by the provider script {raw['provider']['file']}; provenance not independently verified." if isinstance(raw,dict) and isinstance(raw.get('provider'),dict) else 'Synthetic scenario data.' if scenario!='custom' else 'User-supplied telemetry; provenance not independently verified.'), 'Confidence is a model estimate, not a calibrated probability.' if report.get('decision_source') == 'groq' else 'Heuristic confidence is not a calibrated probability.','Root cause requires verification; no corrective actions were executed.']+[str(x)[:300] for x in (raw.get('import_notes') if isinstance(raw.get('import_notes'),list) else [])[:10]]
                 if decision['conflict']:
                     limitations.append('Competing causes have similar scores; collect targeted measurements.')
                 if len(results)<3:

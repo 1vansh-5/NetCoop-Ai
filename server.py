@@ -26,7 +26,7 @@ class Request(BaseModel):
     scenario: str='congestion'
     telemetry: dict | None=None
     seed: int=Field(default=7,ge=0,le=1000000)
-    mode: Literal['demo','gemini']='demo'
+    mode: Literal['demo','gemini','groq']='demo'
 
 def validate(body):
     if body.telemetry is None and body.scenario.startswith(telemetry_provider.PREFIX):
@@ -54,7 +54,7 @@ def save(result):
 
 @app.get('/api/health')
 def health():
-    return {'status':'ok','gemini_configured':bool(os.getenv('GEMINI_API_KEY')),'model':os.getenv('GEMINI_MODEL','gemini-flash-latest'),'telemetry_source':'synthetic / provider script / user supplied','mcp_transport':'stdio','provider':telemetry_provider.inspect_provider()}
+    return {'status':'ok','groq_configured':bool(os.getenv('GROQ_API_KEY','').strip()),'groq_model':os.getenv('GROQ_MODEL','llama-3.3-70b-versatile'),'gemini_configured':bool(os.getenv('GEMINI_API_KEY')),'model':os.getenv('GEMINI_MODEL','gemini-flash-latest'),'telemetry_source':'synthetic / provider script / user supplied','mcp_transport':'stdio','provider':telemetry_provider.inspect_provider()}
 
 @app.get('/api/scenarios')
 def scenarios():
@@ -77,7 +77,7 @@ def telemetry(scenario: str):
 
 async def execute(body,emit=None):
     async with gate:
-        result=await diagnose('custom' if body.telemetry is not None else body.scenario,body.telemetry,body.seed,body.mode=='gemini',emit)
+        result=await diagnose('custom' if body.telemetry is not None else body.scenario,body.telemetry,body.seed,body.mode=='gemini',emit,llm_provider=body.mode)
         await asyncio.to_thread(save,result)
         return result
 
