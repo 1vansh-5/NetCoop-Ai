@@ -1,356 +1,457 @@
-# NetCoop — Groq update
-
-## Install / replace
-1. Stop your running NetCoop server. Keep a backup of the existing folder.
-2. Extract this ZIP. Copy everything INSIDE its T2 folder into your existing T2 folder and replace matching files. Include the complete static folder and new groq_decision.py.
-3. Copy .env.example to .env beside server.py (if you already have .env, add these settings to it instead).
-4. Set GROQ_API_KEY=your_actual_key in .env. Keep GROQ_MODEL=llama-3.3-70b-versatile, or use another Groq model supporting JSON object responses.
-5. Run run.bat. Open http://127.0.0.1:8000 and hard-refresh your browser (Ctrl+F5).
-
-## Use
-Click Diagnose / Operations on the campus page. It opens the full operations dashboard in the same tab, with agent operations, evidence, AI decision, downloads and incident history together.
-Select Normal, Latency spike or Hardware failure from the telemetry provider list. Choose Groq AI and click Run investigation. Each investigation executes telemetry_provider.py again; a preview is a separate sample, so its random values can differ from the final run.
-The supplied provider generates fresh RANDOM SIMULATION data; it is not a collector connected to real network equipment. The 3D campus is also illustrative and is not the provider's measured topology.
-Groq chooses the final probable cause, confidence and alternatives. The matching runbook supplies recommended actions. The original specialist scores are retained under specialist_baseline. The dashboard labels fallback decisions if the key is missing, the API fails or the response is invalid. Stale or very incomplete data cannot become a definitive AI diagnosis. No repairs run automatically.
-
-Your key stays on the server. Groq mode sends the normalized telemetry and specialist findings to Groq. Never put the key in JavaScript or share your .env.
-
-## Files changed
-engine.py, server.py, provider.py, telemetry_provider.py, cli.py, static/index.html, static/campus.html, static/campus-netcoop.js, static/netcoop.html, static/app.js, README.md.
-New: groq_decision.py, .env.example, START_HERE.md, tests/test_groq.py.
-The ZIP includes the whole source project and existing assets/tests/samples. It excludes API keys, old incident history, .git, virtual environments and generated caches. Existing .env and data are not replaced.
-
-## Validation
-Run python -m pytest -q from T2 after installing requirements.txt. Groq tests use mocked API responses, including AI overriding specialist results, invalid responses, missing-key fallback and stale-data protection. A real Groq request requires your key and has not been tested with your account.
-
-API integration references: https://console.groq.com/docs/api-reference and https://console.groq.com/docs/structured-outputs
-
-
----
-# Original project reference (legacy Gemini instructions below)
-
 # NetCoop AI
 
-**Multi-agent network fault diagnosis that shows its evidence, and says "not enough data" when that is the honest answer.**
+**Evidence-based network fault diagnosis with specialist agents, MCP tools, and optional Groq or Gemini integration.**
 
-NetCoop AI takes campus network telemetry (device health, link metrics, DNS/DHCP status), runs three independent specialist agents over it, and produces a diagnosis with ranked alternatives, a confidence score, the evidence behind it, and human-review recommendations. It never changes the network. Every step is streamed live as structured messages over a real MCP (Model Context Protocol) connection.
+NetCoop AI analyzes network telemetry and produces a probable cause, supporting evidence, alternative explanations, confidence, and recommended next steps. A browser dashboard shows the investigation as it runs, alongside an illustrative 3D campus view.
 
-Built for the Agentic AI hackathon around a campus-network scenario (IIT Bhubaneswar). All bundled telemetry is **synthetic**.
+The bundled scenarios and telemetry provider generate **simulated data**. They do not monitor real network equipment. Recommendations require human review; NetCoop does not execute repairs.
 
----
+## Contents
 
-## Why it is different
+- [Features](#features)
+- [Application workflow](#application-workflow)
+- [Windows setup with PowerShell](#windows-setup-with-powershell)
+- [Configuration](#configuration)
+- [Using the dashboard](#using-the-dashboard)
+- [Command-line usage](#command-line-usage)
+- [REST API](#rest-api)
+- [Telemetry and providers](#telemetry-and-providers)
+- [Project structure](#project-structure)
+- [Development and testing](#development-and-testing)
+- [Troubleshooting](#troubleshooting)
 
-| Principle | What the code does |
-|---|---|
-| **Evidence first** | Every finding carries a signal, value, unit, severity, device and interpretation. The report lists them all. |
-| **Honest uncertainty** | Missing, stale or conflicting data produces `insufficient_evidence` with confidence capped below 0.5, never a confident guess. |
-| **Independent agents** | Performance, infrastructure and connectivity specialists analyse the same normalized data in parallel and never read each other's output. |
-| **Real MCP transport** | Each run spawns an MCP server subprocess over stdio. All tool calls go through it. |
-| **AI cannot override facts** | Optional Gemini investigation is advisory, read-only, budget-limited, and cannot change the scored diagnosis. |
-| **Schema interoperability** | Legacy schema `0.9` is converted to `1.0` automatically and every conversion is logged as a warning. |
-| **Recommendations only** | Runbooks suggest human actions. Nothing is executed. |
+## Features
 
----
+- Three deterministic specialists analyze performance, infrastructure, and connectivity concurrently.
+- A real Model Context Protocol (MCP) connection over stdio exposes diagnostic tools.
+- Telemetry validation checks types, ranges, device IDs, topology, completeness, and freshness.
+- Legacy schema `0.9` is normalized to schema `1.0`.
+- Groq can select the final diagnosis from telemetry and specialist evidence.
+- Gemini can investigate through read-only tools and add an advisory explanation.
+- Missing keys or unavailable AI services leave the specialist diagnosis available.
+- The dashboard streams investigation events, displays evidence, and supports report export.
+- API investigations are stored in SQLite, retaining the latest 100 incidents; the history endpoint lists the latest 20.
 
-## How it works
+### Diagnosis modes
+
+| Mode | Behavior | API key |
+| --- | --- | --- |
+| `demo` | Deterministic specialist analysis and correlation | None |
+| `groq` | Groq selects the cause, confidence, and alternatives; specialist baseline is retained | `GROQ_API_KEY` |
+| `gemini` | Specialist diagnosis plus Gemini investigation; Gemini does not override the scored result | `GEMINI_API_KEY` |
+
+The specialists are rule-based diagnostic functions. External language models are used only in the selected AI mode.
+
+## Application workflow
 
 ```mermaid
-flowchart LR
-    UI[Dashboard / CLI / API] --> O[Orchestrator<br/>engine.py]
-    O -->|stdio| M[MCP server<br/>mcp_server.py]
-    M --> N[Normalize + validate]
-    N --> P[Performance agent]
-    N --> I[Infrastructure agent]
-    N --> C[Connectivity agent]
-    P --> F[Correlation<br/>score + confidence]
-    I --> F
-    C --> F
-    F --> G[Gemini investigator<br/>optional, read-only]
-    G <-->|inspect_device / get_runbook| M
-    F --> R[Report + runbook]
-    G --> R
-    R --> DB[(SQLite<br/>last 100 incidents)]
+flowchart TD
+    A[Dashboard, CLI, or REST API] --> B[Orchestrator]
+    B <-->|stdio| M[MCP diagnostic tools]
+    M --> T[Built-in scenario, provider script, or supplied telemetry]
+    T --> N[Validate and normalize telemetry]
+    N --> P[Performance specialist]
+    N --> I[Infrastructure specialist]
+    N --> C[Connectivity specialist]
+    P --> S[Correlate evidence and score hypotheses]
+    I --> S
+    C --> S
+    S --> D{Selected mode}
+    D -->|Demo| R[Specialist diagnosis]
+    D -->|Groq| G[Validated AI decision or specialist fallback]
+    D -->|Gemini| E[Specialist diagnosis with advisory investigation]
+    G --> F[Report, evidence, limitations, and runbook]
+    E --> F
+    R --> F
+    F --> U[Display or export result]
+    F -->|API investigations| DB[(SQLite incident history)]
 ```
 
-1. **Plan.** The orchestrator opens an MCP session and lists the available tools.
-2. **Telemetry.** It reads a synthetic scenario (`get_telemetry`) or uses telemetry you supply.
-3. **Normalize.** `normalize_telemetry` validates the schema (types, ranges, unique IDs, valid links), converts legacy units, and scores **data coverage** and **freshness**.
-4. **Specialists, in parallel.**
-   - *Performance*: latency, jitter, packet loss, throughput vs. capacity.
-   - *Infrastructure*: link utilization, queue drops, interface errors, CPU, memory, device status.
-   - *Connectivity*: Wi-Fi signal and retransmissions, DNS/DHCP health, impact of down devices.
-5. **Correlate.** Each specialist returns weighted support for candidate causes. Weights are summed, ranked, and turned into a confidence value. The result is downgraded to `insufficient_evidence` if coverage is low, data is stale, total support is weak, or the top two causes are too close.
-6. **Investigate (optional).** Gemini can call two read-only MCP tools, `inspect_device` and `get_runbook`, within a hard budget (4 model turns, 6 tool calls).
-7. **Report.** The final report is saved to SQLite and streamed to the client.
+1. **Start an investigation.** Choose a scenario or supply telemetry, then select a diagnosis mode.
+2. **Connect tools.** The orchestrator starts the MCP subprocess, initializes its session, and discovers tools.
+3. **Collect and validate.** Read the selected telemetry, normalize its schema, and assess data quality.
+4. **Analyze concurrently.** Performance checks traffic metrics; infrastructure checks device and interface health; connectivity checks wireless and service health.
+5. **Correlate evidence.** Combine specialist support into ranked causes. In the deterministic path, stale, incomplete, weak, or closely competing evidence can produce `insufficient_evidence`.
+6. **Apply the selected AI mode.** Groq may replace the baseline decision after response validation and data-quality checks. Gemini adds a read-only investigation, limited to four model turns and six tool calls.
+7. **Build the report.** Include supporting measurements, affected devices, alternatives, quality warnings, and recommended actions. API runs are saved to history; CLI runs print or write their result.
 
-### Diagnoses it can produce
+Possible causes: `normal`, `link_congestion`, `weak_wifi`, `interface_fault`, `dns_dhcp_failure`, `device_overload`, and `insufficient_evidence`.
 
-`link_congestion` · `weak_wifi` · `interface_fault` · `dns_dhcp_failure` · `device_overload` · `normal` · `insufficient_evidence`
+Confidence is an estimate, not a calibrated probability. A scenario named `hardware_failure` does not prove that physical hardware has failed.
 
-### Detection thresholds
+## Windows setup with PowerShell
 
-| Signal | Triggers when | Points toward |
-|---|---|---|
-| Link utilization | > 85 % | link congestion |
-| Queue drops | > 50 pkts/s | link congestion |
-| Latency | > 100 ms | link congestion |
-| Throughput / bandwidth | > 0.85 | link congestion |
-| Interface errors | > 100 | interface fault |
-| Packet loss | > 2 % | interface fault, weak Wi-Fi, congestion |
-| Jitter | > 20 ms | weak Wi-Fi, interface fault |
-| Signal strength | < -75 dBm | weak Wi-Fi |
-| Retransmissions | > 15 % | weak Wi-Fi |
-| CPU or memory | > 85 % CPU, > 90 % memory | device overload |
-| DNS or DHCP | not `ok` (`unknown` is ignored) | DNS/DHCP failure |
-| Device status | `down` or `degraded` | interface fault |
+### 1. Install prerequisites
 
-Confidence is a heuristic, not a calibrated probability.
+- Python **3.11 or newer** with the Python launcher available.
+- Git.
+- PowerShell and a modern browser.
+- Internet access for dependency installation and optional AI requests.
 
----
+Check your tools:
 
-## Quick start
-
-Requires **Python 3.11+**. No Node build, no cloud account and no API key are needed for the default offline mode.
-
-**Windows:** double-click `run.bat`. It creates `.venv`, installs dependencies and starts the server.
-
-**macOS / Linux:**
-
-```sh
-git clone https://github.com/1vansh-5/T1.git
-cd T1
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m uvicorn server:app --host 127.0.0.1 --port 8000
+```powershell
+py --version
+git --version
 ```
 
-Then open:
+No Node.js build or separate database installation is required.
 
-| URL | Page |
-|---|---|
-| http://127.0.0.1:8000 | 3D campus architecture and network simulation |
-| http://127.0.0.1:8000/netcoop.html | NetCoop diagnostic dashboard |
+### 2. Clone the repository
 
----
-
-## Using it
-
-### Dashboard
-
-Pick a scenario, choose **Deterministic · offline demo** or **Google Gemini + MCP tools**, and run an investigation. You will see the agent message stream, the evidence ledger, ranked alternative causes, data-quality warnings and recommended actions. Reports can be exported as JSON.
-
-### Telemetry provider script (live data for the agents)
-
-`telemetry_provider.py` is the live telemetry source. Each time an investigation runs a `provider:<scenario>` scenario, the MCP `get_telemetry` tool runs this file in its own process and the three specialist agents analyse whatever it returns. The run appears in the message trace as a `telemetry_source` event, and the report notes that the telemetry came from the script.
-
-Pick a scenario from the **Telemetry provider** group at the top of the scenario list, or from the CLI:
-
-```sh
-python cli.py --scenario provider:hardware_failure
+```powershell
+git clone https://github.com/1vansh-5/NetCoop-Ai.git
+Set-Location .\NetCoop-Ai
 ```
 
-To use your own provider, edit `telemetry_provider.py` or point to another file with the `NETCOOP_PROVIDER` environment variable. The file needs one function that returns a telemetry dict:
+Run the remaining commands from this repository folder, beside `server.py`.
 
-```python
-def generate_telemetry(fault_type="normal"):
-    ...
-    if fault_type == "latency_spike":   # these branches become the scenario names
-        ...
-    return {"timestamp": ..., "device_id": "SW_1", "status": "Warning", "metrics": {...}}
+### 3. Create the Python virtual environment
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-- Scenario names are read from the function's `fault_type == "..."` branches, or from a top-level `SCENARIOS = ["a", "b"]` list.
-- The returned dict may be a single-device record (as above) or NetCoop schema 1.0 / 0.9. Single-device records are converted and every conversion is listed in the report's limitations.
-- The script is re-run on every investigation, so random values change each time. Timestamps from the script are used as given, so old timestamps are reported as stale.
-- Printing inside the script is safe. A 10 second limit applies (`NETCOOP_PROVIDER_TIMEOUT`), and failures (an exception, a timeout, a missing file) appear as a readable error in the report.
-- The script is trusted project code and runs with your normal environment, except that `GEMINI_API_KEY` is withheld. Do not point it at a file you do not trust.
+`.venv` contains Python and the installed packages. `.env`, created next, is a separate configuration file containing API keys and settings.
 
-### Importing your own telemetry
+These instructions call the virtual environment's Python directly, so activation is optional and no PowerShell execution-policy change is needed.
 
-Click **Import telemetry** and choose a `.json` or `.py` file. It is validated immediately (schema, units, ranges, links, coverage, freshness), earlier results are cleared, and in offline mode the investigation starts automatically. Problems are reported with a reason, for example a Python syntax error line or an out-of-range value.
+### 4. Create `.env` from PowerShell
 
-Two data layouts are understood:
+Create the file only if it does not already exist:
 
-- **NetCoop schema 1.0 / legacy 0.9** (see [`PROTOCOL.md`](PROTOCOL.md)).
-- **Single-device records**, for example `{"device_id": "SW_1", "timestamp": "2026-11-01T04:45:00+05:30", "status": "Warning", "metrics": {"cpu_utilization_pct": 58, "latency_ms": 265, ...}}`. A file may hold one record or several named ones (`{"normal": {...}, "latency_spike": {...}}`); each named record appears in the scenario list after import. Status text is mapped to `up` / `degraded` / `down`, and unrecognised metrics are listed in the import notes.
-
-If a file's timestamp is old, the dashboard asks whether to analyse it as a recorded snapshot. Choosing yes skips the age check and records that in the report's limitations.
-
-A `.py` file can provide its data in any of these ways:
-
-- a variable named `TELEMETRY`, `telemetry` or `data` (a dict or a JSON string)
-- a zero-argument function such as `generate()`, `get_telemetry()` or `main()` that returns the telemetry
-- a script that prints one JSON object
-
-A plain dict literal is read without running the file. Anything else is executed in a separate Python process (10 second limit, no environment variables, temporary folder). This is not a security sandbox, so Python import only works when the dashboard is opened on the same computer as the server. Only import scripts you trust.
-
-### Command line
-
-```sh
-python cli.py                                    # default scenario: congestion
-python cli.py --scenario weak_wifi
-python cli.py --input my_telemetry.json          # your own telemetry
-python cli.py --scenario dns_failure --output report.json
-python cli.py --scenario congestion --gemini     # needs GEMINI_API_KEY
-```
-
-### REST API
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/api/health` | Status, whether Gemini is configured, model name |
-| `GET` | `/api/scenarios` | List scenario names |
-| `GET` | `/api/telemetry/{scenario}` | Generate sample telemetry (`provider:<name>` runs the provider script) |
-| `GET` | `/api/provider` | Provider file, function and scenario names |
-| `POST` | `/api/import` | Read a `.json` or `.py` telemetry file and validate it |
-| `POST` | `/api/diagnose` | Run a diagnosis and return the full result |
-| `POST` | `/api/diagnose/stream` | Same, streamed as NDJSON events |
-| `GET` | `/api/incidents` | 20 most recent reports |
-| `GET` | `/api/incidents/{id}` | One full incident |
-
-```sh
-curl -X POST http://127.0.0.1:8000/api/diagnose \
-  -H "Content-Type: application/json" \
-  -d '{"scenario": "congestion", "seed": 7, "mode": "demo"}'
-```
-
-Request body fields: `scenario` (default `congestion`), `telemetry` (your own object, overrides the scenario), `seed` (0 to 1,000,000), `mode` (`demo` or `gemini`). Telemetry is limited to 250 KB and at most 3 diagnoses run at once.
-
-### MCP server
-
-`mcp_server.py` is a standalone stdio MCP server you can attach to any MCP client:
-
-| Tool | Description |
-|---|---|
-| `get_telemetry` | Reproducible synthetic telemetry, or a live run of the provider script for `provider:<name>` |
-| `normalize_telemetry` | Validate, convert legacy units, measure coverage and freshness |
-| `analyze_specialist` | Run the performance, infrastructure or connectivity agent |
-| `inspect_device` | Read one device and its links from the incident |
-| `get_runbook` | Human-review actions for a cause |
-
-Resource: `netcoop://protocol` (message and schema summary).
-
----
-
-## Scenarios
-
-Sample files live in `samples/` (regenerate with `python make_samples.py`).
-
-| Scenario | Expected result |
-|---|---|
-| `normal` | No fault detected |
-| `congestion` | Uplink congestion on the hostel core switch |
-| `weak_wifi` | Weak wireless signal on an access point |
-| `interface_fault` | Ethernet interface fault on a department switch |
-| `dns_failure` | DNS or DHCP failure |
-| `device_overload` | Device resource overload |
-| `interop_legacy` | Legacy schema `0.9`, converted, then diagnosed as congestion |
-| `mixed_fault` | Congestion and interface fault together: ranked alternatives or `insufficient_evidence` |
-| `missing_data` | `insufficient_evidence` |
-| `stale_data` | `insufficient_evidence` (older than 5 minutes) |
-| `malformed` | Rejected with an `error` report and zero confidence |
-
----
-
-## Telemetry format
-
-Minimal valid input (schema `1.0`):
-
-```json
-{
-  "schema_version": "1.0",
-  "timestamp": 1793460000,
-  "devices": [
-    {"id": "CORE_RTR_01", "type": "router", "status": "up",
-     "cpu_pct": 30, "mem_pct": 45, "if_errors": 1, "queue_drops": 2, "link_util_pct": 40},
-    {"id": "HOSTEL_AP_07", "type": "ap", "status": "up",
-     "signal_dbm": -55, "retransmit_pct": 2}
-  ],
-  "links": [["CORE_RTR_01", "HOSTEL_AP_07"]],
-  "metrics": {"latency_ms": 18, "jitter_ms": 2, "packet_loss_pct": 0.1,
-              "throughput_mbps": 450, "bandwidth_mbps": 1000},
-  "services": {"dns": "ok", "dhcp": "ok"}
+```powershell
+if (-not (Test-Path -LiteralPath .env)) {
+    New-Item -ItemType File -Path .env | Out-Null
 }
 ```
 
-Validation is strict: numeric strings, booleans, `NaN` and `Infinity` are rejected; percentages must be 0 to 100; device IDs must be unique; every link must reference two existing devices; at most 200 devices. Missing measurements are allowed but lower coverage and confidence. A missing or stale (older than 5 minutes) timestamp forces `insufficient_evidence`.
+You do not need an `.env.example`. For offline demo mode, the file can remain empty; skip to step 6.
 
-Full field reference, the message envelope and failure semantics are in [`PROTOCOL.md`](PROTOCOL.md).
+### 5. Add your API key directly through PowerShell
 
----
+Choose the provider you intend to use. Only one key is required for that provider's mode.
 
-## Report
+First, paste this helper into the same PowerShell window. It adds or updates a setting without replacing unrelated settings and writes UTF-8 **without a byte-order mark (BOM)**, as required by the application's simple `.env` loader.
 
-Every report includes: `incident_id`, `status` (`diagnosed`, `insufficient_evidence` or `error`), `cause`, `suspected_root_cause`, `confidence`, `affected_devices`, `potentially_impacted_neighbors`, `supporting_evidence`, `alternative_causes`, `recommended_actions`, `evidence_sources`, `limitations`, `scores`, `data_quality`, `ai`, and `duration_ms`.
+```powershell
+function Set-NetCoopEnv {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string]$Value
+    )
 
-`ai.status` is one of `offline`, `connected`, `unavailable` or `limited`. Only `connected` means Gemini actually returned text.
+    if ($Value -match "[\r\n]") {
+        throw 'Enter a single-line value.'
+    }
 
----
+    $envPath = Join-Path (Get-Location).Path '.env'
+    $lines = @()
+    if (Test-Path -LiteralPath $envPath) {
+        $lines = @([System.IO.File]::ReadAllLines($envPath))
+    }
 
-## Optional: Google Gemini
+    $pattern = '^\s*' + [regex]::Escape($Name) + '\s*='
+    $lines = @($lines | Where-Object { $_ -notmatch $pattern })
+    $lines += "$Name=$Value"
 
-1. Get an API key from [Google AI Studio](https://aistudio.google.com/apikey).
-2. Put it in `.env` in the project root:
+    $encoding = [System.Text.UTF8Encoding]::new($false)
+    [System.IO.File]::WriteAllLines($envPath, [string[]]$lines, $encoding)
+}
 
-   ```env
-   GEMINI_API_KEY=your_key_here
-   GEMINI_MODEL=gemini-flash-latest
-   ```
+function Set-NetCoopApiKey {
+    param([Parameter(Mandatory = $true)][string]$Name)
 
-3. Restart the server and select Gemini mode (or pass `--gemini` to the CLI).
-
-The key stays on the server and is never sent to the browser. Gemini mode sends the current telemetry and scored decision to Google's API; offline mode never calls Google. If the key is missing, quota is exhausted or the call fails, the deterministic report is still returned and the failure is labelled, not hidden.
-
-> **Keep `.env` out of Git.** It is listed in `.gitignore`, but make sure you never commit a real key.
-
----
-
-## Tests
-
-```sh
-python -m pytest -q
+    $secret = Read-Host "Paste your $Name and press Enter" -AsSecureString
+    $credential = [System.Net.NetworkCredential]::new('', $secret)
+    try {
+        $value = $credential.Password.Trim()
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            throw 'The API key cannot be empty.'
+        }
+        Set-NetCoopEnv -Name $Name -Value $value
+        Write-Host "$Name saved to .env."
+    }
+    finally {
+        $value = $null
+        $credential = $null
+        $secret.Dispose()
+    }
+}
 ```
 
-The suite covers expected diagnoses for every scenario, input validation, legacy conversion, no mutation of inputs, abstention on conflicting or missing evidence, file import (`.json` and `.py`), a real MCP subprocess end to end, the HTTP stream plus SQLite history, and the Gemini tool loop with a mocked transport. If temp-directory permissions are restricted, add `--basetemp=<new empty folder>`.
+**Option A: Groq**
 
-Live Gemini calls were **not** verified with a real key; the tool loop is tested against a mocked Google API. See [`VALIDATION.md`](VALIDATION.md).
+Create a key in the [Groq Console](https://console.groq.com/keys), then run:
 
----
+```powershell
+Set-NetCoopApiKey -Name GROQ_API_KEY
+Set-NetCoopEnv -Name GROQ_MODEL -Value 'openai/gpt-oss-20b'
+```
+
+Paste the key at the hidden prompt. The model above is the fallback model named in `groq_decision.py`; your account must have access to it and it must support JSON object responses. Change `GROQ_MODEL` if necessary.
+
+**Option B: Gemini**
+
+Create a key in [Google AI Studio](https://aistudio.google.com/apikey), then run:
+
+```powershell
+Set-NetCoopApiKey -Name GEMINI_API_KEY
+Set-NetCoopEnv -Name GEMINI_MODEL -Value 'gemini-flash-latest'
+```
+
+You can run both options to configure both modes. These commands also work when replacing a key later; define the helper functions again if you open a new terminal.
+
+The hidden prompt keeps the key out of the command itself and terminal output. The application still needs the key stored as plain text in `.env`; keep that file private.
+
+**Exclude local secrets and generated files from Git:**
+
+```powershell
+$ignoreEntries = @('.env', '.venv/', '__pycache__/', '.pytest_cache/', 'data/')
+if (-not (Test-Path -LiteralPath .gitignore)) {
+    New-Item -ItemType File -Path .gitignore | Out-Null
+}
+$existingEntries = @(Get-Content -LiteralPath .gitignore)
+foreach ($entry in $ignoreEntries) {
+    if ($existingEntries -notcontains $entry) {
+        Add-Content -LiteralPath .gitignore -Value $entry -Encoding utf8
+    }
+}
+git check-ignore .env
+```
+
+The final command should print `.env`. Ignore rules do not remove files already tracked by Git; never commit a real API key.
+
+### 6. Start the application
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn server:app --host 127.0.0.1 --port 8000
+```
+
+Keep this terminal open. Visit:
+
+| Address | Purpose |
+| --- | --- |
+| [localhost:8000](http://127.0.0.1:8000) | Campus visualization |
+| [Operations dashboard](http://127.0.0.1:8000/netcoop.html) | Run investigations and view results |
+| [API documentation](http://127.0.0.1:8000/docs) | Interactive FastAPI documentation |
+
+Press **Ctrl+C** to stop the server. Restart it after changing `.env` because the file is read when the application imports the engine.
+
+For subsequent launches, you can also run:
+
+```powershell
+.\run.bat
+```
+
+The launcher creates `.venv` if needed, installs requirements, and starts the server. If creating the environment through this launcher, `python` must be on your PATH.
+
+### 7. Verify configuration without printing secrets
+
+Open a second PowerShell window and run:
+
+```powershell
+Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/health' |
+    Select-Object status, groq_configured, groq_model, gemini_configured, model
+```
+
+The configured flag should be `True` for the provider you set up. This checks whether a key is present, not whether the provider accepts it. Run an investigation in that AI mode to check the actual connection.
+
+## Configuration
+
+Place `.env` beside `engine.py` and `server.py`. Use one `NAME=value` setting per line, without `export`, `$env:`, or inline comments.
+
+| Setting | Purpose |
+| --- | --- |
+| `GROQ_API_KEY` | Enables Groq requests when Groq mode is selected |
+| `GROQ_MODEL` | Groq model supporting the requested JSON output format |
+| `GEMINI_API_KEY` | Enables Gemini requests when Gemini mode is selected |
+| `GEMINI_MODEL` | Gemini model; code default is `gemini-flash-latest` |
+| `NETCOOP_PROVIDER` | Provider script path; defaults to `telemetry_provider.py` |
+| `NETCOOP_PROVIDER_TIMEOUT` | Provider execution timeout in seconds; default is `10` |
+
+Set `GROQ_MODEL` explicitly: the current health endpoint reports a different default from the actual Groq decision function when the setting is absent.
+
+Existing process environment variables take precedence over `.env`. If an old key or model was previously set with `$env:`, remove the conflicting value from the server's terminal before restarting, for example:
+
+```powershell
+Remove-Item Env:GROQ_API_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:GROQ_MODEL -ErrorAction SilentlyContinue
+```
+
+Groq mode sends normalized telemetry and specialist evidence to Groq. Gemini mode sends normalized telemetry and the baseline decision to Google, with tool results when requested. Offline mode does not call either AI provider.
+
+## Using the dashboard
+
+1. Open the campus page and select **Diagnose / Operations**, or open `/netcoop.html` directly.
+2. Select a built-in scenario, a telemetry provider scenario, or import supported telemetry.
+3. Choose offline demo, Groq, or Gemini mode.
+4. Click **Run investigation**.
+5. Review the agent activity, supporting evidence, AI status, confidence, alternatives, and limitations.
+6. Export the report or reopen a previous API investigation from incident history.
+
+For a first run, use `congestion` in offline mode. Then try Groq with the same scenario to compare its decision with `specialist_baseline`.
+
+The supplied provider offers `normal`, `latency_spike`, and `hardware_failure`. It generates new random measurements on each invocation, so preview values can differ from investigation values. The campus visualization is illustrative rather than a measured provider topology.
+
+## Command-line usage
+
+Run these commands from the repository root. The CLI does not require the web server to be running.
+
+```powershell
+# Offline investigation
+.\.venv\Scripts\python.exe .\cli.py --scenario congestion
+
+# Groq diagnosis
+.\.venv\Scripts\python.exe .\cli.py --scenario congestion --groq
+
+# Gemini advisory investigation
+.\.venv\Scripts\python.exe .\cli.py --scenario weak_wifi --gemini
+
+# Run the supplied provider script
+.\.venv\Scripts\python.exe .\cli.py --scenario provider:hardware_failure --groq
+
+# Analyze a JSON snapshot and save the result
+.\.venv\Scripts\python.exe .\cli.py --input .\samples\congestion.json --output .\report.json
+
+# List supported options
+.\.venv\Scripts\python.exe .\cli.py --help
+```
+
+`--groq` and `--gemini` are mutually exclusive. Without either flag, analysis uses offline mode. CLI output includes `report`, `messages`, and normalized `telemetry`; it is not automatically added to the web server's incident history.
+
+Recorded samples can be stale. For a fresh demonstration use `--scenario congestion`; do not silently treat historical measurements as current observations.
+
+## REST API
+
+With the server running, submit an investigation from PowerShell:
+
+```powershell
+$body = @{
+    scenario = 'congestion'
+    seed = 7
+    mode = 'demo'
+} | ConvertTo-Json
+
+$result = Invoke-RestMethod `
+    -Uri 'http://127.0.0.1:8000/api/diagnose' `
+    -Method Post `
+    -ContentType 'application/json' `
+    -Body $body
+
+$result.report | Format-List
+```
+
+Change `mode` to `groq` or `gemini` to use the corresponding provider. API keys remain in server configuration and are not sent in this request.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/api/health` | Server status, key-presence flags, and provider information |
+| GET | `/api/scenarios` | Built-in scenario names |
+| GET | `/api/provider` | Provider availability and scenario names |
+| GET | `/api/telemetry/{scenario}` | Generate scenario or provider telemetry |
+| POST | `/api/diagnose` | Run a diagnosis and save its result |
+| POST | `/api/diagnose/stream` | Stream newline-delimited JSON investigation events |
+| POST | `/api/import` | Import and validate a JSON or Python telemetry file |
+| GET | `/api/incidents` | List the latest 20 stored reports |
+| GET | `/api/incidents/{incident}` | Retrieve a stored investigation |
+
+The diagnosis request can include a `telemetry` object instead of generated data. Import requests use `filename`, `content`, and optional `replay`. Replay treats recorded telemetry as current for analysis and adds a note; it does not refresh the actual measurements.
+
+## Telemetry and providers
+
+### Built-in scenarios
+
+`normal`, `congestion`, `weak_wifi`, `interface_fault`, `dns_failure`, `interop_legacy`, `mixed_fault`, `missing_data`, `stale_data`, `device_overload`, and `malformed`.
+
+The malformed scenario exercises validation failure. Missing or stale data exercises uncertainty handling rather than a successful fault diagnosis.
+
+### Custom telemetry
+
+Native schema `1.0` uses `devices`, `metrics`, and optional topology and service data. Legacy schema `0.9` is also supported. Validation requires 1–200 devices, unique device IDs, valid numeric ranges, and links referencing existing devices.
+
+Timestamps are checked for freshness: missing timestamps, timestamps older than five minutes, or timestamps more than one minute in the future are flagged. See [PROTOCOL.md](PROTOCOL.md) and [samples/](samples/) for the data format and examples.
+
+### Custom provider scripts
+
+Use a trusted Python script exposing a function such as `generate_telemetry(fault_type="normal")` that returns a telemetry dictionary. A top-level `SCENARIOS` list declares selectable scenario names. Supported conditional branches can also be used for discovery.
+
+To configure another provider using the PowerShell helper from setup:
+
+```powershell
+Set-NetCoopEnv -Name NETCOOP_PROVIDER -Value 'my_provider.py'
+Set-NetCoopEnv -Name NETCOOP_PROVIDER_TIMEOUT -Value '10'
+```
+
+Restart the server, check `/api/provider`, and choose a `provider:<scenario>` entry. Relative paths resolve against the repository directory. Each provider investigation runs the script again in a separate process.
+
+Provider scripts and some Python imports execute code. Use only trusted files and keep the default localhost binding for local use. JSON is preferable when only a telemetry snapshot is needed.
 
 ## Project structure
 
+```text
+NetCoop-Ai/
+|-- server.py              # FastAPI endpoints, streaming, and SQLite history
+|-- engine.py              # MCP orchestration, mode selection, report assembly
+|-- mcp_server.py          # MCP diagnostic tools over stdio
+|-- netcoop.py             # Validation, specialists, correlation, runbooks
+|-- legacy_rules.py        # Base rules and legacy telemetry support
+|-- groq_decision.py       # Groq request, response validation, and fallback
+|-- provider.py            # Provider discovery and subprocess execution
+|-- telemetry_provider.py  # Bundled random simulation provider
+|-- importer.py            # Telemetry import and conversion
+|-- cli.py                 # Command-line entry point
+|-- make_samples.py        # Sample generation utility
+|-- run.bat                # Windows setup and launch helper
+|-- requirements.txt       # Pinned Python dependencies
+|-- static/                # Campus view and operations dashboard assets
+|-- samples/               # Example telemetry snapshots
+|-- tests/                 # Diagnostic and Groq tests
+|-- PROTOCOL.md            # Telemetry and message protocol reference
+|-- DEMO_SCRIPT.md         # Demonstration guide
+|-- START_HERE.md          # Additional setup notes
+|-- VALIDATION.md          # Validation notes
+|-- .env                   # Local configuration; created during setup
+|-- .venv/                 # Local Python environment; generated
+`-- data/                  # SQLite history; generated by the server
 ```
-├── server.py          FastAPI app, REST + streaming endpoints, SQLite history
-├── engine.py          Orchestrator, MCP client, Gemini tool loop, report assembly
-├── provider.py        Runs the telemetry provider script for MCP get_telemetry
-├── telemetry_provider.py  The live telemetry source (edit or replace)
-├── importer.py        Reads and converts uploaded .json / .py telemetry files
-├── mcp_server.py      Stdio MCP server exposing the diagnostic tools
-├── netcoop.py         Validation, specialist agents, correlation, runbooks
-├── legacy_rules.py    Base telemetry generator, normalizer and detection rules
-├── cli.py             Command-line interface
-├── make_samples.py    Regenerates samples/*.json
-├── samples/           Ready-made scenario telemetry
-├── static/            Dashboard and 3D campus simulation (no build step)
-├── tests/             Pytest suite
-├── PROTOCOL.md        Message envelope and telemetry schema
-├── VALIDATION.md      Verification record
-└── DEMO_SCRIPT.md     Four-minute presentation plan
+
+## Development and testing
+
+1. Create a branch for your change.
+2. Install dependencies in `.venv` using the setup instructions.
+3. Make the change and run the tests:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
----
+4. Start the server and check an offline investigation. For UI changes, also inspect the dashboard.
+5. For AI integration changes, check connected and fallback behavior. The Groq tests use mocked responses; passing them does not verify access with your real API key.
+6. Review the diff and ensure `.env`, generated reports, and local incident data are not included before committing.
 
-## Limitations
+This is a local development workflow; it does not imply that a GitHub Actions pipeline is configured.
 
-- Telemetry is synthetic or user supplied; nothing polls real devices.
-- Detection rules are heuristic thresholds, and confidence is not a calibrated probability.
-- Interface error counts are treated as a snapshot, not a rate over time.
-- Single-user prototype: no authentication, and history keeps the latest 100 incidents.
-- No automatic remediation. All actions are recommendations for a human to verify.
+## Troubleshooting
 
----
+| Problem | What to check |
+| --- | --- |
+| `py` is not recognized | Install Python with its launcher, or use `python -m venv .venv` if a suitable Python is on PATH. |
+| Dependency installation fails | Confirm Python 3.11+, internet access, and the exact failing package in `requirements.txt`. Check the package's Python compatibility before changing pinned versions. |
+| PowerShell blocks activation | Use `.\.venv\Scripts\python.exe` directly as shown above; activation is unnecessary. |
+| API key is not detected | Put `.env` beside `engine.py`, use the exact setting name, write UTF-8 without BOM, and restart the server. Check for conflicting process environment variables. |
+| Groq returns 401 | Replace the key through the PowerShell prompt and restart. |
+| Groq returns 400 or 404 | Set `GROQ_MODEL` to an accessible model supporting JSON object responses, then restart. |
+| Groq returns 429 | Check account limits and retry later. The report should use specialist fallback. |
+| Gemini is unavailable | Check the key, model access, quota, and connection. The specialist diagnosis remains available. |
+| Report says `insufficient_evidence` | Review freshness, missing measurements, failed specialists, and competing hypotheses. Collect better telemetry. |
+| Preview and investigation values differ | The supplied provider generates a new random sample for each call. |
+| Port 8000 is occupied | Stop the existing process or launch with `--port 8001` and use that port in browser/API URLs. |
+| UI appears outdated | Hard-refresh the browser with Ctrl+F5 and confirm the full `static/` directory is present. |
+| MCP import or startup fails | Use the same virtual environment for installation and launch; check that the installed MCP version matches `requirements.txt`. |
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+The repository currently does not include a top-level project license. Do not assume an open-source license has been granted. Bundled third-party assets may have their own notices, including [the Three.js license](static/campus-three-LICENSE.txt).
