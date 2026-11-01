@@ -50,7 +50,7 @@
                 <div><label for="scenario">INVESTIGATION SCENARIO</label><select id="scenario"></select></div>
                 <div><label for="mode">REASONING ENGINE</label><select id="mode">
                         <option value="demo">Deterministic · offline demo</option>
-                        <option value="gemini">Google Gemini + MCP tools</option>
+                        <option value="groq" selected>Groq AI · final decision</option>
                     </select></div>
                 <div class="run-source"><i></i><span id="source">Reproducible synthetic data</span></div><button
                     class="button primary" id="run">▶ <span>Run investigation</span></button>
@@ -73,7 +73,7 @@
                 </article>
                 <article><span>DIAGNOSTIC CONFIDENCE</span>
                     <div><strong id="confidence">—</strong><small>%</small><span class="metric-icon">◎</span></div>
-                    <p>Evidence score · not a probability</p>
+                    <p>Diagnostic estimate · not a probability</p>
                 </article>
             </section>
             <div id="dashboard">

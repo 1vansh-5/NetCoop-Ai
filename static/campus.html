@@ -978,8 +978,8 @@
 <body class="campus-clean">
   <div class="model-note">PHOTO-INFORMED ARCHITECTURE · Schematic positions and dimensions · Simulated network hardware
     / traffic · <a href="/campus-sources.json" target="_blank" rel="noopener">Sources & accuracy</a></div>
-  <div class="nc-controls"><a class="open-netcoop" href="/netcoop.html">Open NetCoop AI →</a><button
-      id="nc-layout-toggle">Show campus controls</button><button id="nc-panel-toggle">Diagnose with agents</button>
+  <div class="nc-controls"><a class="open-netcoop" href="/netcoop.html">Operations dashboard →</a><button
+      id="nc-layout-toggle">Show campus controls</button><button id="nc-panel-toggle">Diagnose / Operations</button>
   </div>
   <section id="nc-panel" hidden><button id="nc-panel-close" style="float:right"
       aria-label="Close diagnostic panel">×</button>
@@ -987,7 +987,7 @@
     <p>This sends the current <strong>simulated</strong> campus snapshot to your existing MCP diagnostic backend.
       Unavailable metrics remain unknown.</p><label for="nc-mode">Reasoning mode</label><select id="nc-mode">
       <option value="demo">Offline agents + MCP</option>
-      <option value="gemini">Google Gemini + MCP (server key required)</option>
+      <option value="groq">Groq AI decision (server key required)</option>
     </select>
     <p>Gemini mode sends this simulation to Google. Your key remains on the server.</p>
     <div style="display:flex;gap:8px;margin:12px 0"><button id="nc-diagnose">Run diagnosis</button><button
@@ -1041,10 +1041,7 @@
           <select id="scenario-dropdown" class="scenario-select" aria-label="Select campus network incident scenario">
             <option value="baseline">1. Optimal Campus Baseline (10G Multi-Ring)</option>
             <option value="hostel_congestion">2. Evening Hostel Congestion (MHR & BHR)</option>
-            <option value="lhc_overload">3. LHC-1 Hackathon Wi-Fi Overload (High Density)</option>
-            <option value="ses_fiber_cut">4. SES Feeder Fiber Bend & Ring Failover</option>
-            <option value="citsc_gateway_fail">5. CITSC Primary NKN Link Flap (BGP Failover)</option>
-            <option value="rogue_arp">6. Lab Rogue Device ARP Storm & CPU Spike</option>
+            <option value="rogue_arp">3. Lab ARP Storm & CPU Spike</option>
           </select>
           <div id="scenario-explanation" class="scenario-desc">
             All 10 Gbps single-mode optical fiber conduits healthy. Low end-to-end latency (&lt;2ms), zero packet drops,

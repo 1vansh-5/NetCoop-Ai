@@ -32,6 +32,6 @@ document.getElementById('nc-diagnose').onclick=async()=>{
     const pre=document.createElement('pre');pre.textContent=JSON.stringify(r,null,2);out.append(pre);
   }catch(e){out.textContent=e.message;}finally{button.disabled=false;}
 };
-document.getElementById('nc-panel-toggle').onclick=()=>{const p=document.getElementById('nc-panel');p.hidden=!p.hidden;};
+document.getElementById('nc-panel-toggle').onclick=()=>{window.location.href='/netcoop.html';};
 document.getElementById('nc-panel-close').onclick=()=>document.getElementById('nc-panel').hidden=true;
 document.getElementById('nc-layout-toggle').onclick=()=>{const hidden=document.body.classList.toggle('campus-clean');document.getElementById('nc-layout-toggle').textContent=hidden?'Show controls':'Hide controls';};
